@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Risala Coordinates Map</title>
+
+<!-- ============================================================
+     LIBRARIES
+     OpenLayers v8 (map engine) + PapaParse (CSV parser), both CDN.
+     ============================================================ -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@8.2.0/ol.css">
+<script src="https://cdn.jsdelivr.net/npm/ol@8.2.0/dist/ol.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+<!-- Font: Amiri for all UI and map labels -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+/* ============================================================
+   DESIGN TOKENS
+   A soft pastel "card UI" palette: lavender / mint / blush,
+   sitting on top of a dark satellite basemap for contrast.
+   ============================================================ */
+:root{
+  --lavender:      #E7E2FB;
+  --lavender-deep: #8B7FD1;
+  --mint:          #D8F5E9;
+  --mint-deep:     #4FAE8C;
+  --blush:         #FDE2E7;
+  --blush-deep:    #E2789A;
+  --cream:         #FBF9F6;
+  --ink:           #2E2A3D;
+  --ink-soft:      #6B657F;
+  --panel-bg:      rgba(251, 249, 246, 0.94);
+  --radius-lg:     22px;
+  --radius-md:     14px;
+  --radius-sm:     10px;
+  --shadow-soft:   0 12px 32px rgba(46, 42, 61, 0.18);
+  --font-display:  'Amiri', serif;
+  --font-body:     'Amiri', serif;
+}
+
+*{ box-sizing: border-box; }
+
+html, body{
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  font-family: var(--font-body);
+  color: var(--ink);
+  overflow: hidden;
+}
+
+#map{
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #0d1117;
+}
+
+/* Cursor states driven by JS: default vs pointer-over-feature */
+#map.feature-hover{ cursor: pointer; }
+
+/* ============================================================
+   LOADING OVERLAY (shown while CSV is fetched / parsed)
+   ============================================================ */
+#loading-overlay{
+  position: absolute;
+  inset: 0;
+  background: var(--ink);
+  color: var(--cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  font-family: var(--font-display);
+  z-index: 50;
+  transition: opacity 0.4s ease;
+}
+#loading-overlay.hidden{ opacity: 0; pointer-events: none; }
+.spinner{
+  width: 34px; height: 34px;
+  border: 4px solid rgba(255,255,255,0.2);
+  border-top-color: var(--lavender);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin{ to{ transform: rotate(360deg); } }
+
+/* ============================================================
+   LAYER CONTROL PANEL — floating, top-right
+   ============================================================ */
+#layer-panel{
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 260px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  background: var(--panel-bg);
+  backdrop-filter: blur(10px);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  padding: 18px 18px 14px;
+  z-index: 20;
+  font-family: var(--font-body);
+}
+#layer-panel h3{
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#layer-panel h3::before{
+  content: "";
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--lavender-deep);
+  display: inline-block;
+}
+.layer-row{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 13.5px;
+}
+.layer-row.parent{
+  font-weight: 600;
+  border-top: 1px solid rgba(46,42,61,0.08);
+  margin-top: 6px;
+  padding-top: 10px;
+}
+.layer-row.child{
+  padding-left: 22px;
+  color: var(--ink-soft);
+}
+.layer-row input[type="checkbox"]{
+  accent-color: var(--lavender-deep);
+  width: 16px; height: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.layer-row .swatch{
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1px solid rgba(0,0,0,0.15);
+}
+.layer-row label{ cursor: pointer; user-select: none; }
+
+/* ============================================================
+   BOTTOM DIALOGUE BOX — sliding "card UI" popup
+   ============================================================ */
+#feature-popup{
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: min(640px, 94vw);
+  transform: translate(-50%, 115%);
+  transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 30;
+  padding: 0 4px 18px;
+}
+#feature-popup.open{ transform: translate(-50%, 0%); }
+
+.popup-shell{
+  background: var(--cream);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  padding: 18px 18px 16px;
+  position: relative;
+}
+
+.popup-close{
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: var(--blush);
+  color: var(--blush-deep);
+  font-size: 15px;
+  font-family: var(--font-body);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.popup-close:hover{ transform: scale(1.1); background: var(--blush-deep); color: #fff; }
+
+/* Header card: Name (prominent) + SubLayer (subtitle) */
+.popup-header{
+  background: var(--lavender);
+  border-radius: var(--radius-md);
+  padding: 14px 46px 14px 16px;
+  margin-bottom: 12px;
+  border-left: 6px solid var(--lavender-deep);
+}
+.popup-header .popup-name{
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--ink);
+  margin: 0 0 2px;
+  line-height: 1.2;
+}
+.popup-header .popup-sublayer{
+  font-size: 12.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--lavender-deep);
+  margin: 0;
+}
+
+/* Middle row: 3 equal mini-cards */
+.popup-minirow{
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.mini-card{
+  flex: 1 1 0;
+  background: var(--mint);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  min-width: 0;
+}
+.mini-card:nth-child(2){ background: var(--blush); }
+.mini-card:nth-child(3){ background: var(--lavender); }
+.mini-card .mini-label{
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin: 0 0 4px;
+}
+.mini-card .mini-value{
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+  overflow-wrap: break-word;
+  font-family: var(--font-body);
+}
+
+/* Bottom row: wide Information card */
+.popup-info-card{
+  background: #fff;
+  border: 1px solid rgba(46,42,61,0.08);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+.popup-info-card .mini-label{
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin: 0 0 6px;
+}
+.popup-info-card p{
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink);
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+/* Scrollbar polish for panel & popup */
+#layer-panel::-webkit-scrollbar, .popup-info-card p::-webkit-scrollbar{ width: 6px; }
+#layer-panel::-webkit-scrollbar-thumb, .popup-info-card p::-webkit-scrollbar-thumb{
+  background: var(--lavender-deep); border-radius: 4px;
+}
+
+@media (max-width: 640px){
+  #layer-panel{ width: 210px; padding: 14px; }
+  .popup-minirow{ flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div>Loading Risala coordinates…</div>
+</div>
+
+<!-- LAYER CONTROL PANEL (populated dynamically once CSV is parsed) -->
+<div id="layer-panel">
+  <h3>Layers</h3>
+  <div id="layer-tree"><!-- checkboxes injected by JS --></div>
+</div>
+
+<!-- BOTTOM DIALOGUE BOX / CARD POPUP -->
+<div id="feature-popup">
+  <div class="popup-shell">
+    <button class="popup-close" id="popup-close-btn" title="Close">✕</button>
+
+    <div class="popup-header">
+      <p class="popup-name" id="popup-name">—</p>
+      <p class="popup-sublayer" id="popup-sublayer">—</p>
+    </div>
+
+    <div class="popup-minirow">
+      <div class="mini-card">
+        <p class="mini-label" id="popup-lat-label">Latitude</p>
+        <p class="mini-value" id="popup-lat">—</p>
+      </div>
+      <div class="mini-card">
+        <p class="mini-label" id="popup-lon-label">Longitude</p>
+        <p class="mini-value" id="popup-lon">—</p>
+      </div>
+      <div class="mini-card">
+        <p class="mini-label" id="popup-longorg-label">Original Longitude</p>
+        <p class="mini-value" id="popup-longorg">—</p>
+      </div>
+    </div>
+
+    <div class="popup-info-card">
+      <p class="mini-label" id="popup-info-label">Information</p>
+      <p id="popup-info">—</p>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   CONFIGURATION
+   Centralised, easy-to-edit constants: card vocabulary, CSV path,
+   basemap URL, and a few style knobs. Change these, not the logic.
+   ================================================================ */
+
+// Path to the local CSV data source (columns documented in README).
+const CSV_URL = 'RisalaCoordinates.csv';
+
+// Display labels for the popup card — rename here to change vocabulary
+// anywhere in the UI without touching the rendering logic below.
+const LABELS = {
+  header: {
+    name: 'Name',
+    sublayer: 'Category'
+  },
+  mini: {
+    Latitude: 'Latitude',
+    Longitude: 'Longitude',
+    LongORG: 'Original Longitude'
+  },
+  info: 'Information'
+};
+
+// Google Satellite (no labels) XYZ endpoint. "lyrs=s" = satellite only.
+const BASEMAP_URL = 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}';
+
+// Marker / label style tuning.
+const BASE_RADIUS = 7;          // px, un-hovered pin radius
+const BASE_FONT_SIZE = 12;      // px, un-hovered label size
+const HOVER_SCALE = 1.45;       // scale multiplier applied on hover
+const ANIM_EASE = 0.22;         // 0-1, higher = snappier hover animation
+
+// Label offset used by default when no adjust value is provided.
+const BASE_LABEL_OFFSET_Y = -16;
+
+function getLabelPlacement(adjustRaw, scale){
+  const adjust = String(adjustRaw || '').trim().toLowerCase();
+  const offset = 16 * scale;
+
+  if (adjust === 'left'){
+    return {
+      offsetX: -offset,
+      offsetY: -(8 * scale),
+      textAlign: 'right'
+    };
+  }
+
+  if (adjust === 'right'){
+    return {
+      offsetX: offset,
+      offsetY: -(8 * scale),
+      textAlign: 'left'
+    };
+  }
+
+  if (adjust === 'down' || adjust === 'bottom'){
+    return {
+      offsetX: 0,
+      offsetY: (16 * scale) + BASE_RADIUS,
+      textAlign: 'center'
+    };
+  }
+
+  if (adjust === 'up' || adjust === 'top'){
+    return {
+      offsetX: 0,
+      offsetY: -(24 * scale) - BASE_RADIUS,
+      textAlign: 'center'
+    };
+  }
+
+  return {
+    offsetX: 0,
+    offsetY: (BASE_LABEL_OFFSET_Y * scale) - BASE_RADIUS,
+    textAlign: 'center'
+  };
+}
+
+// Ensure color values from CSV are valid CSS colors.
+function normalizeColor(primary, fallback){
+  const tryColor = (value) => {
+    if (!value) return null;
+    const str = String(value).trim();
+    if (!str) return null;
+
+    // Convert plain hex like "8140DC" into "#8140DC".
+    if (/^[0-9a-fA-F]{6}$/.test(str) || /^[0-9a-fA-F]{3}$/.test(str)) {
+      return `#${str}`;
+    }
+
+    // Accept already-valid CSS color strings (#hex, rgb(), hsl(), names, etc).
+    if (typeof CSS !== 'undefined' && CSS.supports && CSS.supports('color', str)) {
+      return str;
+    }
+
+    return null;
+  };
+
+  return tryColor(primary) || tryColor(fallback) || '#ff5252';
+}
+
+/* ================================================================
+   MAP INITIALISATION
+   ================================================================ */
+
+// --- Basemap: Google Satellite, no labels ---------------------------------
+const satelliteLayer = new ol.layer.Tile({
+  source: new ol.source.XYZ({
+    url: BASEMAP_URL,
+    attributions: '© Google',
+    maxZoom: 20
+  }),
+  properties: { title: 'Google Satellite', isBasemap: true }
+});
+
+// --- Map object -------------------------------------------------------------
+const map = new ol.Map({
+  target: 'map',
+  layers: [satelliteLayer], // vector sublayers are added after CSV parsing
+  view: new ol.View({
+    center: ol.proj.fromLonLat([0, 20]), // temporary; refit after data loads
+    zoom: 3
+  }),
+  controls: ol.control.defaults.defaults({ attributionOptions: { collapsible: true } })
+});
+
+/* ================================================================
+   HOVER ANIMATION ENGINE
+   Each feature carries an 'anim_scale' property (default 1). On
+   hover we ease it towards HOVER_SCALE; on hover-out we ease it
+   back to 1. The style function below reads this property so the
+   marker + label visually "grow" smoothly rather than snapping.
+   ================================================================ */
+const animTargets = {}; // uid -> { feature, target }
+let rafId = null;
+
+function setAnimTarget(feature, target){
+  const uid = ol.util.getUid(feature);
+  animTargets[uid] = { feature, target };
+  if (!rafId) rafId = requestAnimationFrame(stepAnimation);
+}
+
+function stepAnimation(){
+  let stillAnimating = false;
+  for (const uid in animTargets){
+    const { feature, target } = animTargets[uid];
+    const current = feature.get('anim_scale') ?? 1;
+    const diff = target - current;
+    if (Math.abs(diff) < 0.01){
+      feature.set('anim_scale', target);
+      delete animTargets[uid];
+    } else {
+      feature.set('anim_scale', current + diff * ANIM_EASE); // triggers re-render
+      stillAnimating = true;
+    }
+  }
+  rafId = stillAnimating ? requestAnimationFrame(stepAnimation) : null;
+}
+
+/* ================================================================
+   FEATURE STYLE FUNCTION
+   Pin colour comes from the CSV "Pincolor" column. Label text is
+   black on a semi-transparent white background so it stays legible
+   over the satellite imagery.
+   ================================================================ */
+function featureStyle(feature){
+  const scale = feature.get('anim_scale') ?? 1;
+  const pinColor = normalizeColor(feature.get('Pincolor'), feature.get('color'));
+  const name = feature.get('Name') || '';
+  const labelPlacement = getLabelPlacement(feature.get('adjust'), scale);
+
+  return new ol.style.Style({
+    image: new ol.style.Circle({
+      radius: BASE_RADIUS * scale,
+      fill: new ol.style.Fill({ color: pinColor }),
+      stroke: new ol.style.Stroke({ color: '#ffffff', width: 2 })
+    }),
+    text: new ol.style.Text({
+      text: name,
+      font: `700 ${Math.round(BASE_FONT_SIZE * scale)}px Amiri, serif`,
+      fill: new ol.style.Fill({ color: '#000000' }),           // black text
+      stroke: new ol.style.Stroke({ color: '#ffffff', width: 3 }),
+      backgroundFill: new ol.style.Fill({ color: 'rgba(255,255,255,0.5)' }), // white 50% bg
+      padding: [3, 6, 3, 6],
+      offsetX: labelPlacement.offsetX,
+      offsetY: labelPlacement.offsetY,
+      textAlign: labelPlacement.textAlign
+    }),
+    zIndex: scale // hovered feature draws above its neighbours
+  });
+}
+
+/* ================================================================
+   CSV LOADING + PARSING (PapaParse)
+   Rows are grouped by "SubLayer" into one ol.layer.Vector per group,
+   all nested inside a parent ol.layer.Group named "RisalaCoordinates".
+   ================================================================ */
+const subLayerGroup = new ol.layer.Group({
+  properties: { title: 'RisalaCoordinates' },
+  layers: []
+});
+map.addLayer(subLayerGroup);
+
+const sourceExtentFeatures = []; // used to fit the view once loaded
+
+Papa.parse(CSV_URL, {
+  download: true,
+  header: true,
+  skipEmptyLines: true,
+  complete: function(results){
+    buildLayersFromRows(results.data);
+    document.getElementById('loading-overlay').classList.add('hidden');
+  },
+  error: function(err){
+    console.error('CSV load/parse error:', err);
+    document.getElementById('loading-overlay').innerHTML =
+      `<div style="max-width:320px;text-align:center;">
+         Could not load <b>${CSV_URL}</b>.<br>
+         Make sure the file sits next to this HTML page and that you are
+         viewing it over http:// (not file://).
+       </div>`;
+  }
+});
+
+function buildLayersFromRows(rows){
+  // Group raw CSV rows by their SubLayer value.
+  const groups = {};
+  rows.forEach(row => {
+    const lat = parseFloat(row.Latitude);
+    const lon = parseFloat(row.Longitude);
+    if (Number.isNaN(lat) || Number.isNaN(lon)) return; // skip malformed rows
+
+    const sub = (row.SubLayer && row.SubLayer.trim()) || 'Uncategorised';
+    if (!groups[sub]) groups[sub] = [];
+
+    const feature = new ol.Feature({
+      geometry: new ol.geom.Point(ol.proj.fromLonLat([lon, lat]))
+    });
+    feature.setProperties({
+      Name: row.Name,
+      Latitude: row.Latitude,
+      Longitude: row.Longitude,
+      LongORG: row.LongORG,
+      SubLayer: sub,
+      Information: row.Information,
+      Pincolor: normalizeColor(row.Pincolor, row.color),
+      color: row.color,
+      adjust: row.adjust,
+      anim_scale: 1
+    });
+    groups[sub].push(feature);
+    sourceExtentFeatures.push(feature);
+  });
+
+  // One vector layer per SubLayer, all parented under subLayerGroup.
+  const subLayerNames = Object.keys(groups).sort();
+  subLayerNames.forEach(subName => {
+    const vectorLayer = new ol.layer.Vector({
+      source: new ol.source.Vector({ features: groups[subName] }),
+      style: featureStyle,
+      properties: { title: subName, isSubLayer: true }
+    });
+    subLayerGroup.getLayers().push(vectorLayer);
+  });
+
+  buildLayerPanel(subLayerNames);
+
+  // Fit the view to all loaded points, with padding.
+  if (sourceExtentFeatures.length){
+    const extent = ol.extent.boundingExtent(
+      sourceExtentFeatures.map(f => f.getGeometry().getCoordinates())
+    );
+    map.getView().fit(extent, { padding: [60, 60, 220, 60], maxZoom: 16, duration: 500 });
+  }
+}
+
+/* ================================================================
+   LAYER CONTROL PANEL (right side, tree of checkboxes)
+   RisalaCoordinates (parent) -> individual SubLayers (children)
+   Google Satellite basemap gets its own top-level checkbox.
+   ================================================================ */
+function buildLayerPanel(subLayerNames){
+  const tree = document.getElementById('layer-tree');
+  tree.innerHTML = '';
+
+  // --- Basemap row ---
+  tree.appendChild(makeLayerRow({
+    label: 'Google Satellite',
+    checked: satelliteLayer.getVisible(),
+    onToggle: (checked) => satelliteLayer.setVisible(checked),
+    rowClass: 'parent'
+  }));
+
+  // --- Parent: RisalaCoordinates (toggles the whole group) ---
+  const childCheckboxes = [];
+  const parentRow = makeLayerRow({
+    label: 'RisalaCoordinates',
+    checked: subLayerGroup.getVisible(),
+    onToggle: (checked) => {
+      subLayerGroup.setVisible(checked);
+      childCheckboxes.forEach(cb => { cb.checked = checked; });
+    },
+    rowClass: 'parent'
+  });
+  tree.appendChild(parentRow);
+
+  // --- Children: one row per SubLayer ---
+  subLayerGroup.getLayers().forEach(layer => {
+    const swatchColor = firstPinColor(layer) || '#8B7FD1';
+    const row = makeLayerRow({
+      label: layer.get('title'),
+      checked: layer.getVisible(),
+      onToggle: (checked) => layer.setVisible(checked),
+      rowClass: 'child',
+      swatchColor
+    });
+    childCheckboxes.push(row.querySelector('input'));
+    tree.appendChild(row);
+  });
+}
+
+// Pull one representative Pincolor from a sublayer, for the panel swatch.
+function firstPinColor(layer){
+  const feats = layer.getSource().getFeatures();
+  return feats.length ? normalizeColor(feats[0].get('Pincolor'), feats[0].get('color')) : null;
+}
+
+// Builds a single checkbox row element for the layer panel.
+function makeLayerRow({ label, checked, onToggle, rowClass, swatchColor }){
+  const row = document.createElement('div');
+  row.className = `layer-row ${rowClass}`;
+
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.checked = checked;
+  checkbox.id = `layer-cb-${label.replace(/\s+/g, '-')}`;
+  checkbox.addEventListener('change', (e) => onToggle(e.target.checked));
+
+  const labelEl = document.createElement('label');
+  labelEl.setAttribute('for', checkbox.id);
+  labelEl.textContent = label;
+
+  row.appendChild(checkbox);
+  if (swatchColor){
+    const swatch = document.createElement('span');
+    swatch.className = 'swatch';
+    swatch.style.background = swatchColor;
+    row.appendChild(swatch);
+  }
+  row.appendChild(labelEl);
+  return row;
+}
+
+/* ================================================================
+   HOVER INTERACTION
+   Cursor -> pointer, and the hovered pin/label scales up smoothly
+   via the animation engine defined above.
+   ================================================================ */
+let hoveredFeature = null;
+const mapTargetEl = map.getTargetElement();
+
+map.on('pointermove', (evt) => {
+  if (evt.dragging) return;
+
+  const hit = map.forEachFeatureAtPixel(evt.pixel, (feature) => feature, {
+    hitTolerance: 4
+  });
+
+  if (hit !== hoveredFeature){
+    if (hoveredFeature) setAnimTarget(hoveredFeature, 1);      // reset old
+    if (hit) setAnimTarget(hit, HOVER_SCALE);                  // grow new
+    hoveredFeature = hit || null;
+  }
+
+  mapTargetEl.classList.toggle('feature-hover', !!hit);
+});
+
+/* ================================================================
+   CLICK INTERACTION -> BOTTOM DIALOGUE BOX
+   ================================================================ */
+const popupEl = document.getElementById('feature-popup');
+
+map.on('singleclick', (evt) => {
+  const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f, { hitTolerance: 4 });
+  if (feature){
+    openPopup(feature);
+  } else {
+    closePopup();
+  }
+});
+
+function openPopup(feature){
+  document.getElementById('popup-name').textContent = feature.get('Name') || '—';
+  document.getElementById('popup-sublayer').textContent = feature.get('SubLayer') || '—';
+
+  document.getElementById('popup-lat-label').textContent = LABELS.mini.Latitude;
+  document.getElementById('popup-lon-label').textContent = LABELS.mini.Longitude;
+  document.getElementById('popup-longorg-label').textContent = LABELS.mini.LongORG;
+  document.getElementById('popup-lat').textContent = feature.get('Latitude') ?? '—';
+  document.getElementById('popup-lon').textContent = feature.get('Longitude') ?? '—';
+  document.getElementById('popup-longorg').textContent = feature.get('LongORG') ?? '—';
+
+  document.getElementById('popup-info-label').textContent = LABELS.info;
+  document.getElementById('popup-info').textContent = feature.get('Information') || 'No further information available.';
+
+  // Tie the header's accent stripe to this feature's own pin colour.
+  const header = document.querySelector('.popup-header');
+  header.style.borderLeftColor = normalizeColor(feature.get('Pincolor'), feature.get('color'));
+
+  popupEl.classList.add('open');
+}
+
+function closePopup(){
+  popupEl.classList.remove('open');
+}
+
+document.getElementById('popup-close-btn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  closePopup();
+});
+
+// Prevent clicks inside the popup card from bubbling to the map
+// (so interacting with the card never pans/zooms the map underneath).
+popupEl.addEventListener('click', (e) => e.stopPropagation());
+popupEl.addEventListener('pointerdown', (e) => e.stopPropagation());
+</script>
+</body>
+</html>
