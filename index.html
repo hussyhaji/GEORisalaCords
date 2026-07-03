@@ -165,15 +165,16 @@ html, body{
    ============================================================ */
 #feature-popup{
   position: absolute;
-  left: 50%;
+  left: auto;
+  right: 20px;
   bottom: 0;
-  width: min(640px, 94vw);
-  transform: translate(-50%, 115%);
+  width: min(560px, 48vw);
+  transform: translate(0, 115%);
   transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
   z-index: 30;
   padding: 0 4px 18px;
 }
-#feature-popup.open{ transform: translate(-50%, 0%); }
+#feature-popup.open{ transform: translate(0, 0%); }
 
 .popup-shell{
   background: var(--cream);
@@ -181,6 +182,8 @@ html, body{
   box-shadow: var(--shadow-soft);
   padding: 18px 18px 16px;
   position: relative;
+  direction: rtl;
+  text-align: right;
 }
 
 .popup-close{
@@ -202,11 +205,32 @@ html, body{
 }
 .popup-close:hover{ transform: scale(1.1); background: var(--blush-deep); color: #fff; }
 
-/* Header card: Name (prominent) + SubLayer (subtitle) */
+/* Small SubLayer chip card (color set from selected layer) */
+.popup-sublayer-card{
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 10px;
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(46, 42, 61, 0.18);
+}
+
+.popup-sublayer-card .popup-sublayer{
+  font-size: 12.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0;
+  color: inherit;
+}
+
+/* Header card: Name (prominent) */
 .popup-header{
   background: var(--lavender);
   border-radius: var(--radius-md);
-  padding: 14px 46px 14px 16px;
+  padding: 12px 46px 14px 16px;
   margin-bottom: 12px;
   border-left: 6px solid var(--lavender-deep);
 }
@@ -217,14 +241,10 @@ html, body{
   color: var(--ink);
   margin: 0 0 2px;
   line-height: 1.2;
+  text-align: center;
 }
 .popup-header .popup-sublayer{
-  font-size: 12.5px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--lavender-deep);
-  margin: 0;
+  display: none;
 }
 
 /* Middle row: 3 equal mini-cards */
@@ -234,14 +254,13 @@ html, body{
   margin-bottom: 12px;
 }
 .mini-card{
-  flex: 1 1 0;
+  flex: 1 1 50%;
   background: var(--mint);
   border-radius: var(--radius-sm);
-  padding: 10px 12px;
+  padding: 12px 14px;
   min-width: 0;
 }
-.mini-card:nth-child(2){ background: var(--blush); }
-.mini-card:nth-child(3){ background: var(--lavender); }
+.mini-card:nth-child(2){ background: var(--lavender); }
 .mini-card .mini-label{
   font-size: 10.5px;
   text-transform: uppercase;
@@ -264,7 +283,7 @@ html, body{
   background: #fff;
   border: 1px solid rgba(46,42,61,0.08);
   border-radius: var(--radius-md);
-  padding: 14px 16px;
+  padding: 16px 18px;
 }
 .popup-info-card .mini-label{
   font-size: 10.5px;
@@ -276,10 +295,11 @@ html, body{
 }
 .popup-info-card p{
   margin: 0;
-  font-size: 13.5px;
-  line-height: 1.5;
+  font-size: 16px;
+  line-height: 1.65;
   color: var(--ink);
-  max-height: 140px;
+  min-height: 220px;
+  max-height: 300px;
   overflow-y: auto;
 }
 
@@ -342,6 +362,15 @@ body.layers-hidden #layers-toggle-btn{
 }
 
 @media (max-width: 768px){
+  #feature-popup{
+    left: 50%;
+    right: auto;
+    width: min(640px, 94vw);
+    transform: translate(-50%, 115%);
+  }
+
+  #feature-popup.open{ transform: translate(-50%, 0%); }
+
   #layer-panel{
     top: 68px;
     right: 12px;
@@ -402,19 +431,18 @@ body.layers-hidden #layers-toggle-btn{
   <div class="popup-shell">
     <button class="popup-close" id="popup-close-btn" title="Close">✕</button>
 
+    <div class="popup-sublayer-card" id="popup-sublayer-card">
+      <p class="popup-sublayer" id="popup-sublayer">—</p>
+    </div>
+
     <div class="popup-header">
       <p class="popup-name" id="popup-name">—</p>
-      <p class="popup-sublayer" id="popup-sublayer">—</p>
     </div>
 
     <div class="popup-minirow">
       <div class="mini-card">
         <p class="mini-label" id="popup-lat-label">Latitude</p>
         <p class="mini-value" id="popup-lat">—</p>
-      </div>
-      <div class="mini-card">
-        <p class="mini-label" id="popup-lon-label">Longitude</p>
-        <p class="mini-value" id="popup-lon">—</p>
       </div>
       <div class="mini-card">
         <p class="mini-label" id="popup-longorg-label">Original Longitude</p>
@@ -530,6 +558,32 @@ function normalizeColor(primary, fallback){
   };
 
   return tryColor(primary) || tryColor(fallback) || '#ff5252';
+}
+
+function getReadableTextColor(color){
+  const hex = normalizeColor(color);
+  const short = /^#([0-9a-fA-F]{3})$/.exec(hex);
+  const long = /^#([0-9a-fA-F]{6})$/.exec(hex);
+
+  if (short){
+    const chars = short[1];
+    const r = parseInt(chars[0] + chars[0], 16);
+    const g = parseInt(chars[1] + chars[1], 16);
+    const b = parseInt(chars[2] + chars[2], 16);
+    const luminance = (0.299 * r) + (0.587 * g) + (0.114 * b);
+    return luminance > 170 ? '#2E2A3D' : '#FFFFFF';
+  }
+
+  if (long){
+    const value = long[1];
+    const r = parseInt(value.slice(0, 2), 16);
+    const g = parseInt(value.slice(2, 4), 16);
+    const b = parseInt(value.slice(4, 6), 16);
+    const luminance = (0.299 * r) + (0.587 * g) + (0.114 * b);
+    return luminance > 170 ? '#2E2A3D' : '#FFFFFF';
+  }
+
+  return '#FFFFFF';
 }
 
 /* ================================================================
@@ -828,14 +882,17 @@ map.on('singleclick', (evt) => {
 });
 
 function openPopup(feature){
+  const layerColor = normalizeColor(feature.get('Pincolor'), feature.get('color'));
+  const sublayerCard = document.getElementById('popup-sublayer-card');
+
   document.getElementById('popup-name').textContent = feature.get('Name') || '—';
   document.getElementById('popup-sublayer').textContent = feature.get('SubLayer') || '—';
+  sublayerCard.style.backgroundColor = layerColor;
+  sublayerCard.style.color = getReadableTextColor(layerColor);
 
   document.getElementById('popup-lat-label').textContent = LABELS.mini.Latitude;
-  document.getElementById('popup-lon-label').textContent = LABELS.mini.Longitude;
   document.getElementById('popup-longorg-label').textContent = LABELS.mini.LongORG;
   document.getElementById('popup-lat').textContent = feature.get('Latitude') ?? '—';
-  document.getElementById('popup-lon').textContent = feature.get('Longitude') ?? '—';
   document.getElementById('popup-longorg').textContent = feature.get('LongORG') ?? '—';
 
   document.getElementById('popup-info-label').textContent = LABELS.info;
@@ -843,7 +900,7 @@ function openPopup(feature){
 
   // Tie the header's accent stripe to this feature's own pin colour.
   const header = document.querySelector('.popup-header');
-  header.style.borderLeftColor = normalizeColor(feature.get('Pincolor'), feature.get('color'));
+  header.style.borderLeftColor = layerColor;
 
   popupEl.classList.add('open');
 }
