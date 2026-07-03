@@ -899,6 +899,13 @@ window.addEventListener('resize', () => {
   syncLayersPanelState();
 });
 
+// Start with layers panel hidden; user opens it with the toggle button.
+if (isMobileViewport()){
+  document.body.classList.remove('layers-mobile-open');
+} else {
+  document.body.classList.add('layers-hidden');
+}
+
 syncLayersPanelState();
 </script>
 </body>
