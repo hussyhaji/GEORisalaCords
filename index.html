@@ -545,6 +545,7 @@ const satelliteLayer = new ol.layer.Tile({
   }),
   properties: { title: 'Google Satellite', isBasemap: true }
 });
+satelliteLayer.setZIndex(0);
 
 // --- Map object -------------------------------------------------------------
 const map = new ol.Map({
@@ -632,6 +633,7 @@ const subLayerGroup = new ol.layer.Group({
   properties: { title: 'RisalaCoordinates' },
   layers: []
 });
+subLayerGroup.setZIndex(10);
 map.addLayer(subLayerGroup);
 
 const sourceExtentFeatures = []; // used to fit the view once loaded
@@ -658,13 +660,17 @@ Papa.parse(CSV_URL, {
 function buildLayersFromRows(rows){
   // Group raw CSV rows by their SubLayer value.
   const groups = {};
+  const orderedSubLayerNames = [];
   rows.forEach(row => {
     const lat = parseFloat(row.Latitude);
     const lon = parseFloat(row.Longitude);
     if (Number.isNaN(lat) || Number.isNaN(lon)) return; // skip malformed rows
 
     const sub = (row.SubLayer && row.SubLayer.trim()) || 'Uncategorised';
-    if (!groups[sub]) groups[sub] = [];
+    if (!groups[sub]){
+      groups[sub] = [];
+      orderedSubLayerNames.push(sub);
+    }
 
     const feature = new ol.Feature({
       geometry: new ol.geom.Point(ol.proj.fromLonLat([lon, lat]))
@@ -686,8 +692,7 @@ function buildLayersFromRows(rows){
   });
 
   // One vector layer per SubLayer, all parented under subLayerGroup.
-  const subLayerNames = Object.keys(groups).sort();
-  subLayerNames.forEach(subName => {
+  orderedSubLayerNames.forEach(subName => {
     const vectorLayer = new ol.layer.Vector({
       source: new ol.source.Vector({ features: groups[subName] }),
       style: featureStyle,
@@ -696,7 +701,7 @@ function buildLayersFromRows(rows){
     subLayerGroup.getLayers().push(vectorLayer);
   });
 
-  buildLayerPanel(subLayerNames);
+  buildLayerPanel(orderedSubLayerNames);
 
   // Fit the view to all loaded points, with padding.
   if (sourceExtentFeatures.length){
@@ -715,14 +720,6 @@ function buildLayersFromRows(rows){
 function buildLayerPanel(subLayerNames){
   const tree = document.getElementById('layer-tree');
   tree.innerHTML = '';
-
-  // --- Basemap row ---
-  tree.appendChild(makeLayerRow({
-    label: 'Google Satellite',
-    checked: satelliteLayer.getVisible(),
-    onToggle: (checked) => satelliteLayer.setVisible(checked),
-    rowClass: 'parent'
-  }));
 
   // --- Parent: RisalaCoordinates (toggles the whole group) ---
   const childCheckboxes = [];
@@ -750,6 +747,14 @@ function buildLayerPanel(subLayerNames){
     childCheckboxes.push(row.querySelector('input'));
     tree.appendChild(row);
   });
+
+  // --- Basemap row (last in panel list) ---
+  tree.appendChild(makeLayerRow({
+    label: 'Google Satellite',
+    checked: satelliteLayer.getVisible(),
+    onToggle: (checked) => satelliteLayer.setVisible(checked),
+    rowClass: 'parent'
+  }));
 }
 
 // Pull one representative Pincolor from a sublayer, for the panel swatch.
