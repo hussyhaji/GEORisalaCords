@@ -259,6 +259,11 @@ map.addLayer(subLayerGroup);
 
 let boundariesController = null;
 let graticuleController = null;
+let geoPlacesNowController = null;
+const panelCollapseState = {
+  geoPlacesNow: false,
+  risalaCoordinates: false
+};
 
 if (typeof window.initMapGraticule === 'function'){
   graticuleController = window.initMapGraticule({ map });
@@ -286,6 +291,15 @@ Papa.parse(CSV_URL, {
 });
 
 function buildLayersFromRows(rows){
+  if (!geoPlacesNowController && typeof window.initGeoPlacesNow === 'function'){
+    geoPlacesNowController = window.initGeoPlacesNow({
+      map,
+      rows,
+      normalizeColor,
+      getZoomResponsiveScale
+    });
+  }
+
   // Group raw CSV rows by their SubLayer value.
   const groups = {};
   const orderedSubLayerNames = [];
@@ -340,7 +354,7 @@ function buildLayersFromRows(rows){
     });
   }
 
-  buildLayerPanel(orderedSubLayerNames);
+  buildLayerPanel();
 
   // Fit the view to all loaded points, with padding.
   if (sourceExtentFeatures.length){
@@ -356,13 +370,52 @@ function buildLayersFromRows(rows){
    RisalaCoordinates (parent) -> individual SubLayers (children)
    Google Satellite basemap gets its own top-level checkbox.
    ================================================================ */
-function buildLayerPanel(subLayerNames){
+function buildLayerPanel(){
   const tree = document.getElementById('layer-tree');
   tree.innerHTML = '';
 
+  if (geoPlacesNowController && geoPlacesNowController.layer){
+    const geoChildControllers = [];
+    const geoGroup = makeCollapsibleLayerGroup({
+      label: 'GeoPlaces NOW',
+      checked: geoPlacesNowController.getVisible(),
+      onToggle: (checked) => geoPlacesNowController.setVisible(checked),
+      swatchColor: normalizeColor(geoPlacesNowController.getFirstColor(), '#06202B'),
+      collapseKey: 'geoPlacesNow'
+    });
+
+    const geoSubLayers = geoPlacesNowController.getSubLayers();
+    geoSubLayers.forEach((layer) => {
+      const swatchColor = firstPinColor(layer) || '#06202B';
+      const row = makeLayerRow({
+        label: layer.get('title'),
+        checked: layer.getVisible(),
+        onToggle: (checked) => layer.setVisible(checked),
+        rowClass: 'child',
+        swatchColor
+      });
+      const checkbox = row.querySelector('input');
+      geoChildControllers.push({
+        checkbox,
+        setVisible: (visible) => layer.setVisible(visible)
+      });
+      geoGroup.childrenContainer.appendChild(row);
+    });
+
+    geoGroup.parentCheckbox.addEventListener('change', (e) => {
+      const checked = e.target.checked;
+      geoChildControllers.forEach((child) => {
+        child.checkbox.checked = checked;
+        child.setVisible(checked);
+      });
+    });
+
+    tree.appendChild(geoGroup.root);
+  }
+
   // --- Parent: RisalaCoordinates (toggles the whole group) ---
   const childControllers = [];
-  const parentRow = makeLayerRow({
+  const risalaGroup = makeCollapsibleLayerGroup({
     label: 'RisalaCoordinates',
     checked: subLayerGroup.getVisible(),
     onToggle: (checked) => {
@@ -372,25 +425,9 @@ function buildLayerPanel(subLayerNames){
         child.setVisible(checked);
       });
     },
-    rowClass: 'parent'
+    collapseKey: 'risalaCoordinates'
   });
-  tree.appendChild(parentRow);
-
-  if (boundariesController && boundariesController.layer){
-    const boundariesRow = makeLayerRow({
-      label: 'حدود الاقاليم',
-      checked: boundariesController.getVisible(),
-      onToggle: (checked) => boundariesController.setVisible(checked),
-      rowClass: 'child',
-      swatchColor: normalizeColor(boundariesController.getPrimaryColor(), '#8B7FD1')
-    });
-    const boundariesCheckbox = boundariesRow.querySelector('input');
-    childControllers.push({
-      checkbox: boundariesCheckbox,
-      setVisible: (visible) => boundariesController.setVisible(visible)
-    });
-    tree.appendChild(boundariesRow);
-  }
+  tree.appendChild(risalaGroup.root);
 
   // --- Children: one row per SubLayer ---
   subLayerGroup.getLayers().forEach(layer => {
@@ -409,7 +446,7 @@ function buildLayerPanel(subLayerNames){
       checkbox,
       setVisible: (visible) => layer.setVisible(visible)
     });
-    tree.appendChild(row);
+    risalaGroup.childrenContainer.appendChild(row);
   });
 
   // --- Basemap row (last in panel list) ---
@@ -433,8 +470,61 @@ function buildLayerPanel(subLayerNames){
 
 // Pull one representative Pincolor from a sublayer, for the panel swatch.
 function firstPinColor(layer){
+  if (!layer || !layer.getSource) return null;
   const feats = layer.getSource().getFeatures();
   return feats.length ? normalizeColor(feats[0].get('Pincolor'), feats[0].get('color')) : null;
+}
+
+function makeCollapsibleLayerGroup({ label, checked, onToggle, swatchColor, collapseKey }){
+  const root = document.createElement('div');
+  root.className = 'layer-group';
+
+  const parentRow = makeLayerRow({
+    label,
+    checked,
+    onToggle,
+    rowClass: 'parent',
+    swatchColor
+  });
+  parentRow.classList.add('has-children');
+
+  const collapseBtn = document.createElement('button');
+  collapseBtn.type = 'button';
+  collapseBtn.className = 'group-collapse-btn';
+  collapseBtn.setAttribute('aria-label', `Toggle ${label} sublayers`);
+
+  const childrenContainer = document.createElement('div');
+  childrenContainer.className = 'layer-group-children';
+
+  const isCollapsed = Boolean(panelCollapseState[collapseKey]);
+  root.classList.toggle('collapsed', isCollapsed);
+
+  function syncCollapseVisual(){
+    const collapsed = root.classList.contains('collapsed');
+    collapseBtn.setAttribute('aria-expanded', String(!collapsed));
+    collapseBtn.textContent = collapsed ? '▸' : '▾';
+  }
+
+  collapseBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    root.classList.toggle('collapsed');
+    panelCollapseState[collapseKey] = root.classList.contains('collapsed');
+    syncCollapseVisual();
+  });
+
+  syncCollapseVisual();
+
+  parentRow.appendChild(collapseBtn);
+  root.appendChild(parentRow);
+  root.appendChild(childrenContainer);
+
+  return {
+    root,
+    parentRow,
+    parentCheckbox: parentRow.querySelector('input'),
+    childrenContainer
+  };
 }
 
 // Builds a single checkbox row element for the layer panel.
@@ -479,7 +569,13 @@ map.on('pointermove', (evt) => {
 
   const hit = map.forEachFeatureAtPixel(
     evt.pixel,
-    (feature) => (feature.get('isBoundaryZone') ? null : feature),
+    (feature, layer) => {
+      if (!feature) return null;
+      if (feature.get('isBoundaryZone')) return null;
+      if (feature.get('isGeoPlacesNowFeature')) return null;
+      if (layer && layer.get && layer.get('isGraticuleLayer')) return null;
+      return feature;
+    },
     { hitTolerance: 4 }
   );
 
@@ -500,7 +596,13 @@ const popupEl = document.getElementById('feature-popup');
 map.on('singleclick', (evt) => {
   const feature = map.forEachFeatureAtPixel(
     evt.pixel,
-    (f) => (f.get('isBoundaryZone') ? null : f),
+    (feature, layer) => {
+      if (!feature) return null;
+      if (feature.get('isBoundaryZone')) return null;
+      if (feature.get('isGeoPlacesNowFeature')) return null;
+      if (layer && layer.get && layer.get('isGraticuleLayer')) return null;
+      return feature;
+    },
     { hitTolerance: 4 }
   );
   if (feature){

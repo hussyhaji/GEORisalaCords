@@ -136,6 +136,7 @@ html, body{
   padding: 6px 0;
   font-size: 13.5px;
 }
+.layer-group + .layer-group{ margin-top: 4px; }
 .layer-row.parent{
   font-weight: 600;
   border-top: 1px solid rgba(46,42,61,0.08);
@@ -146,6 +147,24 @@ html, body{
   padding-left: 22px;
   color: var(--ink-soft);
 }
+.layer-row.has-children label{ flex: 1; }
+.group-collapse-btn{
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: var(--font-body);
+  font-size: 12px;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.group-collapse-btn:hover{ background: rgba(139,127,209,0.16); color: var(--ink); }
+.layer-group-children{ overflow: hidden; }
+.layer-group.collapsed .layer-group-children{ display: none; }
 .layer-row input[type="checkbox"]{
   accent-color: var(--lavender-deep);
   width: 16px; height: 16px;
@@ -534,6 +553,7 @@ body.layers-hidden #layers-toggle-btn{
 
 <script src="graticules.js"></script>
 <script src="boundaries.js"></script>
+<script src="geoplaces-now.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
