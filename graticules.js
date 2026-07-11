@@ -4,6 +4,9 @@
    toggled from the layer panel.
    ================================================================ */
 (function(){
+  const LIGHT_GRATICULE_COLOR = 'rgba(255, 255, 255, 0.28)';
+  const DARK_GRATICULE_COLOR = 'rgba(0, 0, 0, 0.5)';
+
   function formatLat(lat){
     const abs = Math.abs(lat);
     const rounded = abs >= 10 ? abs.toFixed(0) : abs.toFixed(1);
@@ -42,6 +45,12 @@
       offsetY: -8
     });
 
+    const strokeStyle = new ol.style.Stroke({
+      color: LIGHT_GRATICULE_COLOR,
+      width: 1,
+      lineDash: [6, 6]
+    });
+
     // Limited intervals keep the grid readable and avoid heavy clutter.
     const gridLayer = new ol.layer.Graticule({
       properties: {
@@ -59,11 +68,7 @@
       wrapX: true,
       targetSize: 170,
       intervals: [60, 30, 20, 10, 5, 2, 1, 0.5],
-      strokeStyle: new ol.style.Stroke({
-        color: 'rgba(255, 255, 255, 0.28)',
-        width: 1,
-        lineDash: [6, 6]
-      })
+      strokeStyle
     });
 
     gridLayer.setZIndex(3);
@@ -85,9 +90,15 @@
       return 'rgba(255,255,255,0.85)';
     }
 
+    function setLineColor(useDarkLines){
+      strokeStyle.setColor(useDarkLines ? DARK_GRATICULE_COLOR : LIGHT_GRATICULE_COLOR);
+      map.render();
+    }
+
     return {
       layer: gridLayer,
       setVisible,
+      setLineColor,
       toggle,
       getVisible,
       getSwatchColor

@@ -160,6 +160,19 @@ const map = new ol.Map({
   })
 });
 
+function setSatelliteVisibility(visible){
+  satelliteLayer.setVisible(visible);
+
+  const targetEl = map.getTargetElement();
+  if (targetEl){
+    targetEl.style.backgroundColor = visible ? '#0d1117' : '#ffffff';
+  }
+
+  if (graticuleController && typeof graticuleController.setLineColor === 'function'){
+    graticuleController.setLineColor(!visible);
+  }
+}
+
 function clamp(value, min, max){
   return Math.min(max, Math.max(min, value));
 }
@@ -272,6 +285,8 @@ const panelCollapseState = {
 if (typeof window.initMapGraticule === 'function'){
   graticuleController = window.initMapGraticule({ map });
 }
+
+setSatelliteVisibility(satelliteLayer.getVisible());
 
 if (typeof window.initMapMeasure === 'function'){
   measureController = window.initMapMeasure({ map });
@@ -486,7 +501,7 @@ function buildLayerPanel(){
   tree.appendChild(makeLayerRow({
     label: 'Google Satellite',
     checked: satelliteLayer.getVisible(),
-    onToggle: (checked) => satelliteLayer.setVisible(checked),
+    onToggle: (checked) => setSatelliteVisibility(checked),
     rowClass: 'parent'
   }));
 }
@@ -696,16 +711,28 @@ document.addEventListener('keydown', (e) => {
 const MOBILE_BREAKPOINT = 768;
 const layersToggleBtn = document.getElementById('layers-toggle-btn');
 const layersToggleText = layersToggleBtn.querySelector('.toggle-text');
+const layerPanelEl = document.getElementById('layer-panel');
 
 function isMobileViewport(){
   return window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT}px)`).matches;
 }
 
-function syncLayersPanelState(){
-  const mobile = isMobileViewport();
-  const isOpen = mobile
+function isLayersPanelOpen(){
+  return isMobileViewport()
     ? document.body.classList.contains('layers-mobile-open')
     : !document.body.classList.contains('layers-hidden');
+}
+
+function setLayersPanelOpen(open){
+  if (isMobileViewport()){
+    document.body.classList.toggle('layers-mobile-open', open);
+  } else {
+    document.body.classList.toggle('layers-hidden', !open);
+  }
+}
+
+function syncLayersPanelState(){
+  const isOpen = isLayersPanelOpen();
 
   layersToggleBtn.setAttribute('aria-expanded', String(isOpen));
   layersToggleBtn.title = isOpen ? 'إخفاء الطبقات' : 'إظهار الطبقات';
@@ -713,11 +740,15 @@ function syncLayersPanelState(){
 }
 
 layersToggleBtn.addEventListener('click', () => {
-  if (isMobileViewport()){
-    document.body.classList.toggle('layers-mobile-open');
-  } else {
-    document.body.classList.toggle('layers-hidden');
-  }
+  setLayersPanelOpen(!isLayersPanelOpen());
+  syncLayersPanelState();
+});
+
+document.addEventListener('pointerdown', (e) => {
+  if (!isLayersPanelOpen()) return;
+  if (layerPanelEl.contains(e.target) || layersToggleBtn.contains(e.target)) return;
+
+  setLayersPanelOpen(false);
   syncLayersPanelState();
 });
 
