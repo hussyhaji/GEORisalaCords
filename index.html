@@ -40,6 +40,11 @@
   --shadow-soft:   0 12px 32px rgba(46, 42, 61, 0.18);
   --font-display:  'Amiri', serif;
   --font-body:     'Amiri', serif;
+  --glass-bg:      rgba(255, 252, 247, 0.76);
+  --glass-border:  rgba(255, 255, 255, 0.46);
+  --toolbar-shadow: 0 20px 44px rgba(15, 23, 42, 0.22);
+  --accent-teal:   #0F8B8D;
+  --accent-gold:   #D4A017;
 }
 
 *{ box-sizing: border-box; }
@@ -52,6 +57,18 @@ html, body{
   font-family: var(--font-body);
   color: var(--ink);
   overflow: hidden;
+}
+
+body::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at top left, rgba(15,139,141,0.18), transparent 30%),
+    radial-gradient(circle at top right, rgba(212,160,23,0.16), transparent 28%),
+    linear-gradient(180deg, rgba(255,255,255,0.05), transparent 26%);
+  pointer-events: none;
+  z-index: 1;
 }
 
 #map{
@@ -93,19 +110,165 @@ html, body{
 @keyframes spin{ to{ transform: rotate(360deg); } }
 
 /* ============================================================
+   TOP TOOLBAR
+   ============================================================ */
+#top-toolbar{
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  right: 20px;
+  z-index: 26;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  pointer-events: none;
+}
+
+.toolbar-cluster{
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(18px);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  box-shadow: var(--toolbar-shadow);
+}
+
+.toolbar-brand{
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.toolbar-brand .eyebrow{
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(46, 42, 61, 0.62);
+}
+
+.toolbar-brand .title{
+  font-family: var(--font-display);
+  font-size: 19px;
+  line-height: 1;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.toolbar-actions{
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toolbar-btn{
+  border: none;
+  border-radius: 16px;
+  padding: 11px 16px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  direction: rtl;
+  text-align: right;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease, color 0.22s ease;
+}
+
+.toolbar-btn .btn-icon{
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.toolbar-btn .btn-icon svg{
+  width: 100%;
+  height: 100%;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.85;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.toolbar-btn:hover{
+  transform: translateY(-1px);
+}
+
+#measure-toggle-btn{
+  background: linear-gradient(135deg, rgba(255,255,255,0.92), rgba(231,226,251,0.96));
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px rgba(139,127,209,0.1);
+  min-height: 44px;
+}
+
+#measure-toggle-btn.is-active{
+  background: linear-gradient(135deg, rgba(139,127,209,0.96), rgba(15,139,141,0.92));
+  color: #fff;
+}
+
+.measure-tooltip{
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: rgba(255, 252, 247, 0.96);
+  color: var(--ink);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.18);
+  border: 1px solid rgba(255,255,255,0.6);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  direction: ltr;
+  white-space: normal;
+  line-height: 1.3;
+  backdrop-filter: blur(14px);
+}
+
+.measure-tooltip-line{
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 4px;
+}
+
+.measure-tooltip-line + .measure-tooltip-line{
+  margin-top: 2px;
+}
+
+.measure-tooltip-label{
+  color: var(--ink-soft);
+  flex-shrink: 0;
+}
+
+.measure-tooltip-values{
+  text-align: left;
+  direction: ltr;
+}
+
+/* ============================================================
    LAYER CONTROL PANEL — floating, top-right
    ============================================================ */
 #layer-panel{
   position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 260px;
-  max-height: calc(100vh - 40px);
+  left: 20px;
+  bottom: 86px;
+  width: 300px;
+  max-height: calc(100vh - 180px);
   overflow-y: auto;
-  background: var(--panel-bg);
-  backdrop-filter: blur(10px);
+  background: rgba(251, 249, 246, 0.94);
+  backdrop-filter: blur(18px);
+  border: 1px solid rgba(255,255,255,0.48);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-soft);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.22);
   padding: 18px 18px 14px;
   z-index: 20;
   font-family: var(--font-body);
@@ -180,29 +343,36 @@ html, body{
 .layer-row label{ cursor: pointer; user-select: none; }
 
 /* ============================================================
-   BOTTOM DIALOGUE BOX — sliding "card UI" popup
+   RIGHT DIALOGUE BOX — sliding "card UI" popup
    ============================================================ */
 #feature-popup{
   position: absolute;
-  left: auto;
-  right: 20px;
-  bottom: 0;
-  width: min(560px, 48vw);
-  transform: translate(0, 115%);
+  top: 24px;
+  right: 24px;
+  bottom: 24px;
+  width: min(460px, 34vw);
+  transform: translateX(calc(100% + 32px));
   transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
   z-index: 30;
-  padding: 0 4px 18px;
+  pointer-events: none;
 }
-#feature-popup.open{ transform: translate(0, 0%); }
+#feature-popup.open{
+  transform: translateX(0);
+  pointer-events: auto;
+}
 
 .popup-shell{
   background: var(--cream);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-soft);
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.24);
   padding: 18px 18px 16px;
   position: relative;
   direction: rtl;
   text-align: right;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255,255,255,0.62);
 }
 
 .popup-close{
@@ -304,6 +474,9 @@ html, body{
   border: 1px solid rgba(46,42,61,0.08);
   border-radius: var(--radius-md);
   padding: 16px 18px;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
 }
 .popup-info-card .mini-label{
   font-size: 10.5px;
@@ -318,8 +491,8 @@ html, body{
   font-size: 16px;
   line-height: 1.65;
   color: var(--ink);
-  min-height: 220px;
-  max-height: 300px;
+  min-height: 0;
+  flex: 1 1 auto;
   overflow-y: auto;
 }
 
@@ -332,23 +505,30 @@ html, body{
 /* Layers toggle button (desktop text, mobile hamburger) */
 #layers-toggle-btn{
   position: absolute;
-  top: 20px;
-  right: 292px;
+  left: 20px;
+  bottom: 20px;
   z-index: 25;
   border: none;
-  border-radius: var(--radius-md);
-  background: var(--panel-bg);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96);
   color: var(--ink);
   font-family: var(--font-body);
   font-size: 13px;
   font-weight: 700;
-  padding: 10px 14px;
-  box-shadow: var(--shadow-soft);
+  padding: 12px 14px;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.24);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  min-width: 132px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+#layers-toggle-btn:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.28);
 }
 
 #layers-toggle-btn .hamburger{
@@ -367,30 +547,16 @@ html, body{
   display: block;
 }
 
-/* Climate boundaries toggle (top-right, animated) */
+/* Climate boundaries toggle inside toolbar */
 #boundaries-toggle-btn{
-  position: absolute;
-  top: 20px;
-  left: 20px;
-  z-index: 26;
+  position: static;
+  z-index: auto;
   border: none;
-  border-radius: var(--radius-md);
-  background: linear-gradient(135deg, rgba(216,245,233,0.96), rgba(231,226,251,0.96));
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.92), rgba(216,245,233,0.96));
   color: var(--ink);
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 700;
-  padding: 10px 14px;
-  box-shadow: var(--shadow-soft);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  direction: rtl;
-  text-align: right;
-  transition: transform 0.28s ease, box-shadow 0.28s ease, background 0.28s ease;
-  animation: boundaryBtnIntro 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: inset 0 0 0 1px rgba(15,139,141,0.08);
+  min-height: 44px;
 }
 
 #boundaries-toggle-btn::before{
@@ -398,18 +564,18 @@ html, body{
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: var(--mint-deep);
+  background: var(--accent-teal);
   box-shadow: 0 0 0 0 rgba(79,174,140,0.45);
   transition: background 0.25s ease, box-shadow 0.4s ease;
 }
 
 #boundaries-toggle-btn:hover{
   transform: translateY(-2px);
-  box-shadow: 0 16px 36px rgba(46, 42, 61, 0.26);
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.22);
 }
 
 #boundaries-toggle-btn.is-active{
-  background: linear-gradient(135deg, rgba(79,174,140,0.95), rgba(139,127,209,0.92));
+  background: linear-gradient(135deg, rgba(15,139,141,0.96), rgba(212,160,23,0.92));
   color: #fff;
 }
 
@@ -418,25 +584,10 @@ html, body{
   box-shadow: 0 0 0 8px rgba(255,255,255,0.2);
 }
 
-@keyframes boundaryBtnIntro{
-  from{
-    opacity: 0;
-    transform: translateY(-10px) scale(0.95);
-  }
-  to{
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
 body.layers-hidden #layer-panel{
-  transform: translateX(calc(100% + 24px));
+  transform: translateY(16px) scale(0.98);
   opacity: 0;
   pointer-events: none;
-}
-
-body.layers-hidden #layers-toggle-btn{
-  right: 20px;
 }
 
 @media (max-width: 640px){
@@ -444,38 +595,60 @@ body.layers-hidden #layers-toggle-btn{
 }
 
 @media (max-width: 768px){
-  #feature-popup{
-    left: 50%;
-    right: auto;
-    width: min(640px, 94vw);
-    transform: translate(-50%, 115%);
+  #top-toolbar{
+    top: 14px;
+    left: 12px;
+    right: 12px;
+    align-items: stretch;
   }
 
-  #feature-popup.open{ transform: translate(-50%, 0%); }
+  .toolbar-cluster{
+    width: 100%;
+    justify-content: space-between;
+    padding: 10px;
+  }
+
+  .toolbar-brand .eyebrow{ display: none; }
+  .toolbar-brand .title{ font-size: 17px; }
+
+  .toolbar-actions{
+    flex-shrink: 0;
+  }
+
+  #feature-popup{
+    top: 78px;
+    right: 12px;
+    left: 12px;
+    bottom: 12px;
+    width: auto;
+    transform: translateX(calc(100% + 18px));
+  }
+
+  #feature-popup.open{ transform: translateX(0); }
 
   #layer-panel{
-    top: 68px;
-    right: 12px;
-    width: min(280px, calc(100vw - 24px));
-    max-height: calc(100vh - 84px);
+    left: 12px;
+    bottom: 74px;
+    width: min(296px, calc(100vw - 24px));
+    max-height: calc(100vh - 170px);
     padding: 14px;
-    transform: translateX(calc(100% + 20px));
+    transform: translateY(16px) scale(0.98);
     opacity: 0;
     pointer-events: none;
   }
 
   body.layers-mobile-open #layer-panel{
-    transform: translateX(0);
+    transform: translateY(0) scale(1);
     opacity: 1;
     pointer-events: auto;
   }
 
   #layers-toggle-btn{
-    top: 16px;
-    right: 16px;
-    width: 44px;
-    height: 44px;
-    padding: 0;
+    left: 12px;
+    bottom: 12px;
+    min-width: 52px;
+    height: 52px;
+    padding: 0 14px;
     border-radius: 12px;
   }
 
@@ -483,11 +656,8 @@ body.layers-hidden #layers-toggle-btn{
   #layers-toggle-btn .hamburger{ display: flex; }
 
   #boundaries-toggle-btn{
-    top: 68px;
-    left: 16px;
+    padding: 10px 12px;
     font-size: 12px;
-    padding: 8px 11px;
-    max-width: min(190px, calc(100vw - 32px));
   }
 }
 </style>
@@ -501,8 +671,36 @@ body.layers-hidden #layers-toggle-btn{
   <div>Loading Risala coordinates…</div>
 </div>
 
+<div id="top-toolbar">
+  <div class="toolbar-cluster">
+    <div class="toolbar-brand">
+      <span class="eyebrow"></span>
+      <span class="title"></span>
+    </div>
+
+    <div class="toolbar-actions">
+      <button class="toolbar-btn" id="measure-toggle-btn" type="button" aria-pressed="false" title="تشغيل القياس">
+        <span class="btn-text">القياس</span>
+        <span class="btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" role="presentation">
+            <path d="M4 16.5 16.5 4a2.12 2.12 0 0 1 3 0l.5.5a2.12 2.12 0 0 1 0 3L7.5 20a2.12 2.12 0 0 1-3 0l-.5-.5a2.12 2.12 0 0 1 0-3Z"></path>
+            <path d="m9 7 8 8"></path>
+            <path d="m11.5 4.5 2 2"></path>
+            <path d="m6.5 9.5 2 2"></path>
+            <path d="m4.5 14.5 2 2"></path>
+          </svg>
+        </span>
+      </button>
+
+      <button class="toolbar-btn" id="boundaries-toggle-btn" type="button" aria-pressed="false" title="إظهار حدود الاقاليم">
+        <span class="btn-text">إظهار حدود الاقاليم</span>
+      </button>
+    </div>
+  </div>
+</div>
+
 <button id="layers-toggle-btn" type="button" aria-controls="layer-panel" aria-expanded="true" title="Toggle layers panel">
-  <span class="toggle-text">Hide Layers</span>
+  <span class="toggle-text">إظهار الطبقات</span>
   <span class="hamburger" aria-hidden="true">
     <span></span>
     <span></span>
@@ -510,13 +708,9 @@ body.layers-hidden #layers-toggle-btn{
   </span>
 </button>
 
-<button id="boundaries-toggle-btn" type="button" aria-pressed="false" title="إظهار حدود الاقاليم">
-  <span class="btn-text">إظهار حدود الاقاليم</span>
-</button>
-
 <!-- LAYER CONTROL PANEL (populated dynamically once CSV is parsed) -->
 <div id="layer-panel">
-  <h3>Layers</h3>
+  <h3>Map Layers</h3>
   <div id="layer-tree"><!-- checkboxes injected by JS --></div>
 </div>
 
@@ -554,6 +748,7 @@ body.layers-hidden #layers-toggle-btn{
 <script src="graticules.js"></script>
 <script src="boundaries.js"></script>
 <script src="geoplaces-now.js"></script>
+<script src="measure.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

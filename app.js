@@ -154,7 +154,10 @@ const map = new ol.Map({
     center: ol.proj.fromLonLat([0, 20]), // temporary; refit after data loads
     zoom: 3
   }),
-  controls: ol.control.defaults.defaults({ attributionOptions: { collapsible: true } })
+  controls: ol.control.defaults.defaults({
+    zoom: false,
+    attributionOptions: { collapsible: true }
+  })
 });
 
 function clamp(value, min, max){
@@ -260,6 +263,7 @@ map.addLayer(subLayerGroup);
 let boundariesController = null;
 let graticuleController = null;
 let geoPlacesNowController = null;
+let measureController = null;
 const panelCollapseState = {
   geoPlacesNow: false,
   risalaCoordinates: false
@@ -267,6 +271,10 @@ const panelCollapseState = {
 
 if (typeof window.initMapGraticule === 'function'){
   graticuleController = window.initMapGraticule({ map });
+}
+
+if (typeof window.initMapMeasure === 'function'){
+  measureController = window.initMapMeasure({ map });
 }
 
 const sourceExtentFeatures = []; // used to fit the view once loaded
@@ -594,6 +602,11 @@ map.on('pointermove', (evt) => {
 const popupEl = document.getElementById('feature-popup');
 
 map.on('singleclick', (evt) => {
+  if (measureController && measureController.isActive && measureController.isActive()){
+    closePopup();
+    return;
+  }
+
   const feature = map.forEachFeatureAtPixel(
     evt.pixel,
     (feature, layer) => {
@@ -650,6 +663,16 @@ document.getElementById('popup-close-btn').addEventListener('click', (e) => {
 popupEl.addEventListener('click', (e) => e.stopPropagation());
 popupEl.addEventListener('pointerdown', (e) => e.stopPropagation());
 
+document.addEventListener('pointerdown', (e) => {
+  if (!popupEl.classList.contains('open')) return;
+  if (popupEl.contains(e.target)) return;
+  closePopup();
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closePopup();
+});
+
 /* ================================================================
    LAYERS PANEL TOGGLE
    Desktop: text button toggles show/hide.
@@ -670,8 +693,8 @@ function syncLayersPanelState(){
     : !document.body.classList.contains('layers-hidden');
 
   layersToggleBtn.setAttribute('aria-expanded', String(isOpen));
-  layersToggleBtn.title = isOpen ? 'Hide layers panel' : 'Show layers panel';
-  layersToggleText.textContent = isOpen ? 'Hide Layers' : 'Show Layers';
+  layersToggleBtn.title = isOpen ? 'إخفاء الطبقات' : 'إظهار الطبقات';
+  layersToggleText.textContent = isOpen ? 'إخفاء الطبقات' : 'إظهار الطبقات';
 }
 
 layersToggleBtn.addEventListener('click', () => {
