@@ -382,6 +382,11 @@ function buildLayerPanel(){
   const tree = document.getElementById('layer-tree');
   tree.innerHTML = '';
 
+  function ensureParentVisible(parentCheckbox, setParentVisible){
+    parentCheckbox.checked = true;
+    setParentVisible(true);
+  }
+
   if (geoPlacesNowController && geoPlacesNowController.layer){
     const geoChildControllers = [];
     const geoGroup = makeCollapsibleLayerGroup({
@@ -398,7 +403,12 @@ function buildLayerPanel(){
       const row = makeLayerRow({
         label: layer.get('title'),
         checked: layer.getVisible(),
-        onToggle: (checked) => layer.setVisible(checked),
+        onToggle: (checked) => {
+          layer.setVisible(checked);
+          if (checked){
+            ensureParentVisible(geoGroup.parentCheckbox, (visible) => geoPlacesNowController.setVisible(visible));
+          }
+        },
         rowClass: 'child',
         swatchColor
       });
@@ -445,7 +455,12 @@ function buildLayerPanel(){
     const row = makeLayerRow({
       label: layer.get('title'),
       checked: layer.getVisible(),
-      onToggle: (checked) => layer.setVisible(checked),
+      onToggle: (checked) => {
+        layer.setVisible(checked);
+        if (checked){
+          ensureParentVisible(risalaGroup.parentCheckbox, (visible) => subLayerGroup.setVisible(visible));
+        }
+      },
       rowClass: 'child',
       swatchColor
     });

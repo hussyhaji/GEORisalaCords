@@ -135,7 +135,6 @@
     function setVisible(visible){
       const isVisible = Boolean(visible);
       layer.setVisible(isVisible);
-      subLayers.forEach((subLayer) => subLayer.setVisible(isVisible));
     }
 
     function getVisible(){
