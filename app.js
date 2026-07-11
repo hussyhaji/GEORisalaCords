@@ -15,11 +15,11 @@ const LABELS = {
     sublayer: 'Category'
   },
   mini: {
-    Latitude: 'Latitude',
+    Latitude: 'العرض حسب الرسالة الشريفة',
     Longitude: 'Longitude',
-    LongORG: 'Original Longitude'
+    LongORG: 'الطول حسب الرسالة الشريفة'
   },
-  info: 'Information'
+  info: ''
 };
 
 // Google Satellite (no labels) XYZ endpoint. "lyrs=s" = satellite only.
