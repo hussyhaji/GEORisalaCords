@@ -277,6 +277,7 @@ let boundariesController = null;
 let graticuleController = null;
 let geoPlacesNowController = null;
 let arabicLinesController = null;
+let aqsaMaghribCornersController = null;
 let measureController = null;
 const panelCollapseState = {
   geoPlacesNow: false,
@@ -289,6 +290,10 @@ if (typeof window.initMapGraticule === 'function'){
 
 if (typeof window.initArabicLinesLayer === 'function'){
   arabicLinesController = window.initArabicLinesLayer({ map });
+}
+
+if (typeof window.initAqsaMaghribCornersLayer === 'function'){
+  aqsaMaghribCornersController = window.initAqsaMaghribCornersLayer({ map });
 }
 
 setSatelliteVisibility(satelliteLayer.getVisible());
@@ -510,6 +515,16 @@ function buildLayerPanel(){
       onToggle: (checked) => arabicLinesController.setVisible(checked),
       rowClass: 'parent',
       swatchColor: arabicLinesController.getSwatchColor()
+    }));
+  }
+
+  if (aqsaMaghribCornersController && aqsaMaghribCornersController.layer){
+    tree.appendChild(makeLayerRow({
+      label: 'زوايا اقصى المغرب',
+      checked: aqsaMaghribCornersController.getVisible(),
+      onToggle: (checked) => aqsaMaghribCornersController.setVisible(checked),
+      rowClass: 'parent',
+      swatchColor: aqsaMaghribCornersController.getSwatchColor()
     }));
   }
 
