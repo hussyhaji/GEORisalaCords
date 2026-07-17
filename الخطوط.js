@@ -268,7 +268,7 @@
     // 2) Greenwich line: 0E from 0 to 90N.
     const greenwichFeature = lineFeatureFromLonLatCoords(
       [[0, 0], [0, 90]],
-      'خط الطول',
+      ' خط الطول حاليًا',
       GREENWICH_COLOR,
       [0, 28]
     );
