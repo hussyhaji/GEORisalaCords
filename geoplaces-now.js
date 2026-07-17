@@ -24,6 +24,49 @@
     return 1;
   }
 
+  function getNowLabelPlacement(adjustRaw, scale){
+    const adjust = String(adjustRaw || '').trim().toLowerCase();
+    const offset = 16 * scale;
+
+    if (adjust === 'left'){
+      return {
+        offsetX: -offset,
+        offsetY: -(8 * scale),
+        textAlign: 'right'
+      };
+    }
+
+    if (adjust === 'right'){
+      return {
+        offsetX: offset,
+        offsetY: -(8 * scale),
+        textAlign: 'left'
+      };
+    }
+
+    if (adjust === 'down' || adjust === 'bottom'){
+      return {
+        offsetX: 0,
+        offsetY: (16 * scale) + BASE_RADIUS,
+        textAlign: 'center'
+      };
+    }
+
+    if (adjust === 'up' || adjust === 'top'){
+      return {
+        offsetX: 0,
+        offsetY: -(24 * scale) - BASE_RADIUS,
+        textAlign: 'center'
+      };
+    }
+
+    return {
+      offsetX: 0,
+      offsetY: (-16 * scale) - BASE_RADIUS,
+      textAlign: 'center'
+    };
+  }
+
   window.initGeoPlacesNow = function initGeoPlacesNow(options){
     const map = options && options.map;
     const rows = (options && options.rows) || [];
@@ -61,6 +104,7 @@
         LongORG: row.LongitudeNOW,
         SubLayer: subLayerName,
         Information: row.categoryNOW || 'GeoPlaces NOW point',
+        adjustNOW: row.adjustNOW,
         Pincolor: pinColor,
         PincolorNOW: pinColor,
         anim_scale: 1,
@@ -79,6 +123,7 @@
         const animScale = feature.get('anim_scale') ?? 1;
         const zoomScale = getScale(options, resolution);
         const scale = animScale * zoomScale;
+        const labelPlacement = getNowLabelPlacement(feature.get('adjustNOW'), scale);
         const pinColor = typeof normalizeColor === 'function'
           ? normalizeColor(feature.get('PincolorNOW'), feature.get('Pincolor'))
           : (feature.get('PincolorNOW') || feature.get('Pincolor') || '#06202B');
@@ -96,9 +141,9 @@
             backgroundFill: new ol.style.Fill({ color: 'rgba(0,0,0,0.9)' }),
             backgroundStroke: new ol.style.Stroke({ color: 'rgba(255,255,255,0.18)', width: 1 }),
             padding: [3, 6, 3, 6],
-            offsetX: 0,
-            offsetY: (-16 * scale) - BASE_RADIUS,
-            textAlign: 'center'
+            offsetX: labelPlacement.offsetX,
+            offsetY: labelPlacement.offsetY,
+            textAlign: labelPlacement.textAlign
           }),
           zIndex: scale
         });
