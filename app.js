@@ -276,6 +276,7 @@ map.addLayer(subLayerGroup);
 let boundariesController = null;
 let graticuleController = null;
 let geoPlacesNowController = null;
+let arabicLinesController = null;
 let measureController = null;
 const panelCollapseState = {
   geoPlacesNow: false,
@@ -284,6 +285,10 @@ const panelCollapseState = {
 
 if (typeof window.initMapGraticule === 'function'){
   graticuleController = window.initMapGraticule({ map });
+}
+
+if (typeof window.initArabicLinesLayer === 'function'){
+  arabicLinesController = window.initArabicLinesLayer({ map });
 }
 
 setSatelliteVisibility(satelliteLayer.getVisible());
@@ -379,12 +384,12 @@ function buildLayersFromRows(rows){
 
   buildLayerPanel();
 
-  // Fit the view to all loaded points, with padding.
+  // Fit the view to all loaded points with extra breathing room.
   if (sourceExtentFeatures.length){
     const extent = ol.extent.boundingExtent(
       sourceExtentFeatures.map(f => f.getGeometry().getCoordinates())
     );
-    map.getView().fit(extent, { padding: [60, 60, 220, 60], maxZoom: 16, duration: 500 });
+    map.getView().fit(extent, { padding: [90, 90, 260, 90], maxZoom: 4, duration: 500 });
   }
 }
 
@@ -495,6 +500,16 @@ function buildLayerPanel(){
       onToggle: (checked) => graticuleController.setVisible(checked),
       rowClass: 'parent',
       swatchColor: graticuleController.getSwatchColor()
+    }));
+  }
+
+  if (arabicLinesController && arabicLinesController.layer){
+    tree.appendChild(makeLayerRow({
+      label: 'الخطوط',
+      checked: arabicLinesController.getVisible(),
+      onToggle: (checked) => arabicLinesController.setVisible(checked),
+      rowClass: 'parent',
+      swatchColor: arabicLinesController.getSwatchColor()
     }));
   }
 
@@ -611,6 +626,7 @@ map.on('pointermove', (evt) => {
       if (!feature) return null;
       if (feature.get('isBoundaryZone')) return null;
       if (feature.get('isGeoPlacesNowFeature')) return null;
+      if (feature.get('isGuideLine')) return null;
       if (layer && layer.get && layer.get('isGraticuleLayer')) return null;
       return feature;
     },
@@ -643,6 +659,7 @@ map.on('singleclick', (evt) => {
       if (!feature) return null;
       if (feature.get('isBoundaryZone')) return null;
       if (feature.get('isGeoPlacesNowFeature')) return null;
+      if (feature.get('isGuideLine')) return null;
       if (layer && layer.get && layer.get('isGraticuleLayer')) return null;
       return feature;
     },
