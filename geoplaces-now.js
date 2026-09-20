@@ -138,7 +138,7 @@
             text: feature.get('Name') || '',
             font: `700 ${Math.max(MIN_RENDERED_FONT, Math.round(BASE_FONT_SIZE * scale))}px Amiri, serif`,
             fill: new ol.style.Fill({ color: '#FFFFFF' }),
-            backgroundFill: new ol.style.Fill({ color: 'rgba(0,0,0,0.9)' }),
+            backgroundFill: new ol.style.Fill({ color: 'rgba(0, 0, 0, 0.64)' }),
             backgroundStroke: new ol.style.Stroke({ color: 'rgba(255,255,255,0.18)', width: 1 }),
             padding: [3, 6, 3, 6],
             offsetX: labelPlacement.offsetX,
@@ -163,7 +163,7 @@
       const vectorLayer = new ol.layer.Vector({
         source: new ol.source.Vector({ features: groupedFeatures[subLayerName] }),
         style: nowStyle,
-        visible: false,
+        visible: true,
         properties: {
           title: subLayerName,
           isGeoPlacesNowSubLayer: true

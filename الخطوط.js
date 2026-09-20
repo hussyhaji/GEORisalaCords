@@ -181,7 +181,11 @@
     requestAnimationFrame(frame);
   }
 
-  function styleForFeature(feature){
+  function styleForFeature(feature, includeHiddenLines){
+    if (feature.get('hideInRisalaMode') && !includeHiddenLines){
+      return null;
+    }
+
     const color = feature.get('color') || '#ffffff';
     const label = feature.get('label') || '';
     const progress = Number(feature.get('lineAnimProgress'));
@@ -272,6 +276,8 @@
       GREENWICH_COLOR,
       [0, 28]
     );
+    greenwichFeature.set('hideInRisalaMode', true);
+    greenwichFeature.set('risalaModeActive', false);
     source.addFeature(greenwichFeature);
 
     runWhenMapReady(map, () => {
@@ -308,6 +314,8 @@
             labelPoint: new ol.geom.Point(mid),
             isGuideLine: true
           });
+          feature.set('hideInRisalaMode', true);
+          feature.set('risalaModeActive', risalaModeActive);
 
           source.addFeature(feature);
 
@@ -323,9 +331,11 @@
         console.error('Could not load aqsamagribline.geojson:', err);
       });
 
+    let risalaModeActive = false;
+
     const layer = new ol.layer.Vector({
       source,
-      style: styleForFeature,
+      style: (feature) => styleForFeature(feature, false),
       properties: {
         title: 'الخطوط',
         isArabicLinesLayer: true
@@ -333,13 +343,38 @@
       visible: true
     });
 
+    const secondaryLayer = new ol.layer.Vector({
+      source,
+      style: (feature) => styleForFeature(feature, true),
+      visible: true,
+      properties: {
+        isArabicLinesSecondaryLayer: true
+      }
+    });
+
     layer.setZIndex(6);
+    secondaryLayer.setZIndex(6);
     map.addLayer(layer);
+    map.addLayer(secondaryLayer);
+
+    function setRisalaMode(active){
+      risalaModeActive = Boolean(active);
+      source.getFeatures().forEach((feature) => {
+        if (feature.get('hideInRisalaMode')){
+          feature.set('risalaModeActive', risalaModeActive);
+        }
+      });
+      secondaryLayer.setVisible(!risalaModeActive);
+      map.render();
+    }
 
     return {
       layer,
+      secondaryLayer,
+      setRisalaMode,
       setVisible(visible){
         layer.setVisible(Boolean(visible));
+        secondaryLayer.setVisible(Boolean(visible) && !risalaModeActive);
       },
       getVisible(){
         return layer.getVisible();

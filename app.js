@@ -270,6 +270,7 @@ const subLayerGroup = new ol.layer.Group({
   properties: { title: 'RisalaCoordinates' },
   layers: []
 });
+subLayerGroup.setVisible(false);
 subLayerGroup.setZIndex(10);
 map.addLayer(subLayerGroup);
 
@@ -277,11 +278,9 @@ let boundariesController = null;
 let graticuleController = null;
 let geoPlacesNowController = null;
 let arabicLinesController = null;
-let aqsaMaghribCornersController = null;
 let measureController = null;
 const panelCollapseState = {
-  geoPlacesNow: false,
-  risalaCoordinates: false
+  geoPlacesNow: false
 };
 
 if (typeof window.initMapGraticule === 'function'){
@@ -290,10 +289,6 @@ if (typeof window.initMapGraticule === 'function'){
 
 if (typeof window.initArabicLinesLayer === 'function'){
   arabicLinesController = window.initArabicLinesLayer({ map });
-}
-
-if (typeof window.initAqsaMaghribCornersLayer === 'function'){
-  aqsaMaghribCornersController = window.initAqsaMaghribCornersLayer({ map });
 }
 
 setSatelliteVisibility(satelliteLayer.getVisible());
@@ -339,6 +334,7 @@ function buildLayersFromRows(rows){
   rows.forEach(row => {
     const lat = parseFloat(row.Latitude);
     const lon = parseFloat(row.Longitude);
+    const risalaLon = parseFloat(row.LongORG);
     if (Number.isNaN(lat) || Number.isNaN(lon)) return; // skip malformed rows
 
     const sub = (row.SubLayer && row.SubLayer.trim()) || 'Uncategorised';
@@ -355,6 +351,10 @@ function buildLayersFromRows(rows){
       Latitude: row.Latitude,
       Longitude: row.Longitude,
       LongORG: row.LongORG,
+      originalLatitude: lat,
+      originalLongitude: lon,
+      risalaLatitude: lat,
+      risalaLongitude: Number.isNaN(risalaLon) ? lon : risalaLon,
       SubLayer: sub,
       Information: row.Information,
       Pincolor: normalizeColor(row.Pincolor, row.color),
@@ -388,6 +388,7 @@ function buildLayersFromRows(rows){
   }
 
   buildLayerPanel();
+  buildRisalaModePanel();
 
   // Fit the view to all loaded points with extra breathing room.
   if (sourceExtentFeatures.length){
@@ -399,9 +400,9 @@ function buildLayersFromRows(rows){
 }
 
 /* ================================================================
-   LAYER CONTROL PANEL (right side, tree of checkboxes)
-   RisalaCoordinates (parent) -> individual SubLayers (children)
-   Google Satellite basemap gets its own top-level checkbox.
+  LAYER CONTROL PANEL (tree of checkboxes)
+  GeoPlaces NOW (parent) -> individual SubLayers (children)
+  Google Satellite basemap gets its own top-level checkbox.
    ================================================================ */
 function buildLayerPanel(){
   const tree = document.getElementById('layer-tree');
@@ -421,6 +422,7 @@ function buildLayerPanel(){
       swatchColor: normalizeColor(geoPlacesNowController.getFirstColor(), '#06202B'),
       collapseKey: 'geoPlacesNow'
     });
+    geoGroup.root.classList.add('geo-places-now-group');
 
     const geoSubLayers = geoPlacesNowController.getSubLayers();
     geoSubLayers.forEach((layer) => {
@@ -456,47 +458,6 @@ function buildLayerPanel(){
     tree.appendChild(geoGroup.root);
   }
 
-  // --- Parent: RisalaCoordinates (toggles the whole group) ---
-  const childControllers = [];
-  const risalaGroup = makeCollapsibleLayerGroup({
-    label: 'RisalaCoordinates',
-    checked: subLayerGroup.getVisible(),
-    onToggle: (checked) => {
-      subLayerGroup.setVisible(checked);
-      childControllers.forEach((child) => {
-        child.checkbox.checked = checked;
-        child.setVisible(checked);
-      });
-    },
-    collapseKey: 'risalaCoordinates'
-  });
-  tree.appendChild(risalaGroup.root);
-
-  // --- Children: one row per SubLayer ---
-  subLayerGroup.getLayers().forEach(layer => {
-    if (layer.get('isBoundaryLayer')) return;
-
-    const swatchColor = firstPinColor(layer) || '#8B7FD1';
-    const row = makeLayerRow({
-      label: layer.get('title'),
-      checked: layer.getVisible(),
-      onToggle: (checked) => {
-        layer.setVisible(checked);
-        if (checked){
-          ensureParentVisible(risalaGroup.parentCheckbox, (visible) => subLayerGroup.setVisible(visible));
-        }
-      },
-      rowClass: 'child',
-      swatchColor
-    });
-    const checkbox = row.querySelector('input');
-    childControllers.push({
-      checkbox,
-      setVisible: (visible) => layer.setVisible(visible)
-    });
-    risalaGroup.childrenContainer.appendChild(row);
-  });
-
   // --- Basemap row (last in panel list) ---
   if (graticuleController && graticuleController.layer){
     tree.appendChild(makeLayerRow({
@@ -518,23 +479,102 @@ function buildLayerPanel(){
     }));
   }
 
-  if (aqsaMaghribCornersController && aqsaMaghribCornersController.layer){
-    tree.appendChild(makeLayerRow({
-      label: 'زوايا اقصى المغرب',
-      checked: aqsaMaghribCornersController.getVisible(),
-      onToggle: (checked) => aqsaMaghribCornersController.setVisible(checked),
-      rowClass: 'parent',
-      swatchColor: aqsaMaghribCornersController.getSwatchColor()
-    }));
-  }
-
   tree.appendChild(makeLayerRow({
     label: 'Google Satellite',
     checked: satelliteLayer.getVisible(),
-    onToggle: (checked) => setSatelliteVisibility(checked),
+    onToggle: (checked) => {
+      if (!risalaModeActive) setSatelliteVisibility(checked);
+    },
     rowClass: 'parent'
   }));
 }
+
+function buildRisalaModePanel(){
+  const tree = document.getElementById('risala-mode-tree');
+  if (!tree) return;
+  tree.innerHTML = '';
+
+  subLayerGroup.getLayers().forEach((layer) => {
+    if (layer.get('isBoundaryLayer')) return;
+
+    tree.appendChild(makeLayerRow({
+      label: layer.get('title'),
+      checked: layer.getVisible(),
+      onToggle: (checked) => layer.setVisible(checked),
+      rowClass: 'child',
+      swatchColor: firstPinColor(layer) || '#8B7FD1'
+    }));
+  });
+}
+
+function setRisalaPointCoordinates(useRisalaCoordinates){
+  const features = [];
+
+  subLayerGroup.getLayers().forEach((layer) => {
+    if (layer.get('isBoundaryLayer') || !layer.getSource) return;
+
+    layer.getSource().getFeatures().forEach((feature) => {
+      const latitude = useRisalaCoordinates
+        ? feature.get('risalaLatitude')
+        : feature.get('originalLatitude');
+      const longitude = useRisalaCoordinates
+        ? feature.get('risalaLongitude')
+        : feature.get('originalLongitude');
+
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+
+      feature.setGeometry(new ol.geom.Point(
+        ol.proj.fromLonLat([longitude, latitude])
+      ));
+      features.push(feature);
+    });
+  });
+
+  if (features.length){
+    const extent = ol.extent.boundingExtent(
+      features.map(feature => feature.getGeometry().getCoordinates())
+    );
+    map.getView().fit(extent, {
+      padding: [90, 90, 260, 90],
+      maxZoom: 4,
+      duration: 500
+    });
+  }
+}
+
+const risalaModeButton = document.getElementById('risala-mode-btn');
+let risalaModeActive = false;
+
+function setRisalaMode(active){
+  risalaModeActive = Boolean(active);
+  setSatelliteVisibility(!risalaModeActive);
+  if (geoPlacesNowController && typeof geoPlacesNowController.setVisible === 'function'){
+    geoPlacesNowController.setVisible(!risalaModeActive);
+  }
+  setRisalaPointCoordinates(risalaModeActive);
+  if (arabicLinesController && typeof arabicLinesController.setRisalaMode === 'function'){
+    arabicLinesController.setRisalaMode(risalaModeActive);
+    if (arabicLinesController.secondaryLayer){
+      arabicLinesController.secondaryLayer.setVisible(!risalaModeActive);
+    }
+  }
+  const satelliteCheckbox = document.getElementById('layer-cb-Google-Satellite');
+  if (satelliteCheckbox) satelliteCheckbox.checked = !risalaModeActive;
+  subLayerGroup.setVisible(risalaModeActive);
+  document.body.classList.toggle('risala-mode', risalaModeActive);
+  map.render();
+  risalaModeButton.classList.toggle('is-active', risalaModeActive);
+  risalaModeButton.setAttribute('aria-pressed', String(risalaModeActive));
+  risalaModeButton.querySelector('.btn-text').textContent = risalaModeActive
+    ? 'العودة إلى الخريطة'
+    : 'المواقع حسب الرسالة الشريفة';
+  risalaModeButton.title = risalaModeActive
+    ? 'العودة إلى خلفية Google'
+    : 'عرض RisalaCoordinates بخلفية بيضاء';
+  closePopup();
+}
+
+risalaModeButton.addEventListener('click', () => setRisalaMode(!risalaModeActive));
 
 // Pull one representative Pincolor from a sublayer, for the panel swatch.
 function firstPinColor(layer){
@@ -610,7 +650,6 @@ function makeLayerRow({ label, checked, onToggle, rowClass, swatchColor }){
   checkbox.addEventListener('change', (e) => onToggle(e.target.checked));
 
   const labelEl = document.createElement('label');
-  labelEl.setAttribute('for', checkbox.id);
   labelEl.textContent = label;
 
   row.appendChild(checkbox);
@@ -640,7 +679,6 @@ map.on('pointermove', (evt) => {
     (feature, layer) => {
       if (!feature) return null;
       if (feature.get('isBoundaryZone')) return null;
-      if (feature.get('isGeoPlacesNowFeature')) return null;
       if (feature.get('isGuideLine')) return null;
       if (layer && layer.get && layer.get('isGraticuleLayer')) return null;
       return feature;
@@ -673,7 +711,6 @@ map.on('singleclick', (evt) => {
     (feature, layer) => {
       if (!feature) return null;
       if (feature.get('isBoundaryZone')) return null;
-      if (feature.get('isGeoPlacesNowFeature')) return null;
       if (feature.get('isGuideLine')) return null;
       if (layer && layer.get && layer.get('isGraticuleLayer')) return null;
       return feature;
@@ -682,8 +719,6 @@ map.on('singleclick', (evt) => {
   );
   if (feature){
     openPopup(feature);
-  } else {
-    closePopup();
   }
 });
 

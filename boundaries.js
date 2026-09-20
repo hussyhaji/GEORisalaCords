@@ -257,8 +257,8 @@
 
     boundaryLayer.setZIndex(5);
 
-    // Insert at the start so points remain visually above boundaries.
-    subLayerGroup.getLayers().insertAt(0, boundaryLayer);
+    // Keep boundaries independent so they remain available in both map modes.
+    map.addLayer(boundaryLayer);
 
     const toggleButton = document.getElementById('boundaries-toggle-btn');
 

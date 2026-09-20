@@ -5,7 +5,7 @@
    ================================================================ */
 (function(){
   const LIGHT_GRATICULE_COLOR = 'rgba(255, 255, 255, 0.28)';
-  const DARK_GRATICULE_COLOR = 'rgba(0, 0, 0, 0.5)';
+  const DARK_GRATICULE_COLOR = '#000000';
 
   function formatLat(lat){
     const abs = Math.abs(lat);
