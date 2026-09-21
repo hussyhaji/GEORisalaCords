@@ -99,9 +99,9 @@
 
       feature.setProperties({
         Name: name,
-        Latitude: row.LatitudeNOW,
+        Latitude: row.Latitude,
         Longitude: row.LongitudeNOW,
-        LongORG: row.LongitudeNOW,
+        LongORG: row.LongORG,
         SubLayer: subLayerName,
         Information: row.categoryNOW || 'GeoPlaces NOW point',
         adjustNOW: row.adjustNOW,

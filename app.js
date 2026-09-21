@@ -389,6 +389,7 @@ function buildLayersFromRows(rows){
 
   buildLayerPanel();
   buildRisalaModePanel();
+  document.getElementById('map-search-input').disabled = false;
 
   // Fit the view to all loaded points with extra breathing room.
   if (sourceExtentFeatures.length){
@@ -507,7 +508,7 @@ function buildRisalaModePanel(){
   });
 }
 
-function setRisalaPointCoordinates(useRisalaCoordinates){
+function setRisalaPointCoordinates(useRisalaCoordinates, fitView = true){
   const features = [];
 
   subLayerGroup.getLayers().forEach((layer) => {
@@ -530,7 +531,7 @@ function setRisalaPointCoordinates(useRisalaCoordinates){
     });
   });
 
-  if (features.length){
+  if (features.length && fitView){
     const extent = ol.extent.boundingExtent(
       features.map(feature => feature.getGeometry().getCoordinates())
     );
@@ -551,7 +552,7 @@ function setRisalaMode(active){
   if (geoPlacesNowController && typeof geoPlacesNowController.setVisible === 'function'){
     geoPlacesNowController.setVisible(!risalaModeActive);
   }
-  setRisalaPointCoordinates(risalaModeActive);
+  setRisalaPointCoordinates(risalaModeActive, false);
   if (arabicLinesController && typeof arabicLinesController.setRisalaMode === 'function'){
     arabicLinesController.setRisalaMode(risalaModeActive);
     if (arabicLinesController.secondaryLayer){
@@ -575,6 +576,128 @@ function setRisalaMode(active){
 }
 
 risalaModeButton.addEventListener('click', () => setRisalaMode(!risalaModeActive));
+
+/* ================================================================
+   MAP SEARCH
+   Search the feature names belonging to the active map mode, then
+   move to the selected point and reuse the existing popup card.
+   ================================================================ */
+const mapSearchEl = document.getElementById('map-search');
+const mapSearchInput = document.getElementById('map-search-input');
+const mapSearchClear = document.getElementById('map-search-clear');
+const mapSearchResults = document.getElementById('map-search-results');
+let mapSearchMatches = [];
+
+function getGeoPlacesSearchFeatures(){
+  const features = [];
+  const layerGroup = geoPlacesNowController && geoPlacesNowController.layer;
+  if (!layerGroup || typeof layerGroup.getLayers !== 'function') return features;
+
+  layerGroup.getLayers().forEach((layer) => {
+    if (!layer.getSource || !layer.getSource().getFeatures) return;
+    features.push(...layer.getSource().getFeatures());
+  });
+  return features;
+}
+
+function getSearchFeatures(){
+  return risalaModeActive ? sourceExtentFeatures : getGeoPlacesSearchFeatures();
+}
+
+function normalizeSearchText(value){
+  return String(value || '').trim().toLocaleLowerCase();
+}
+
+function closeSearchResults(){
+  mapSearchResults.classList.remove('open');
+  mapSearchResults.innerHTML = '';
+  mapSearchMatches = [];
+}
+
+function renderSearchResults(){
+  const query = normalizeSearchText(mapSearchInput.value);
+  mapSearchEl.classList.toggle('has-value', Boolean(query));
+
+  if (!query){
+    closeSearchResults();
+    return;
+  }
+
+  const matches = getSearchFeatures()
+    .filter((feature) => normalizeSearchText(feature.get('Name')).includes(query))
+    .slice(0, 10);
+
+  mapSearchMatches = matches;
+  mapSearchResults.innerHTML = '';
+
+  if (!matches.length){
+    const empty = document.createElement('div');
+    empty.className = 'map-search-empty';
+    empty.textContent = 'لا توجد نتائج مشابهة';
+    mapSearchResults.appendChild(empty);
+  } else {
+    matches.forEach((feature, index) => {
+      const option = document.createElement('button');
+      option.type = 'button';
+      option.className = 'map-search-option';
+      option.setAttribute('role', 'option');
+      option.dataset.index = String(index);
+      option.textContent = feature.get('Name') || '—';
+      mapSearchResults.appendChild(option);
+    });
+  }
+
+  mapSearchResults.classList.add('open');
+}
+
+function selectSearchFeature(feature){
+  if (!feature || !feature.getGeometry()) return;
+
+  const coordinates = feature.getGeometry().getCoordinates();
+  const currentZoom = map.getView().getZoom() || 0;
+  map.getView().animate({
+    center: coordinates,
+    zoom: Math.max(currentZoom, 7),
+    duration: 550
+  });
+
+  mapSearchInput.value = feature.get('Name') || '';
+  mapSearchEl.classList.add('has-value');
+  closeSearchResults();
+  openPopup(feature);
+}
+
+mapSearchInput.addEventListener('input', renderSearchResults);
+mapSearchInput.addEventListener('focus', () => {
+  if (mapSearchInput.value.trim()) renderSearchResults();
+});
+mapSearchInput.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape'){
+    closeSearchResults();
+    mapSearchInput.blur();
+  }
+  if (event.key === 'Enter' && mapSearchMatches.length){
+    event.preventDefault();
+    selectSearchFeature(mapSearchMatches[0]);
+  }
+});
+
+mapSearchResults.addEventListener('click', (event) => {
+  const option = event.target.closest('.map-search-option');
+  if (!option) return;
+  selectSearchFeature(mapSearchMatches[Number(option.dataset.index)]);
+});
+
+mapSearchClear.addEventListener('click', () => {
+  mapSearchInput.value = '';
+  mapSearchInput.focus();
+  closeSearchResults();
+  mapSearchEl.classList.remove('has-value');
+});
+
+document.addEventListener('pointerdown', (event) => {
+  if (!mapSearchEl.contains(event.target)) closeSearchResults();
+});
 
 // Pull one representative Pincolor from a sublayer, for the panel swatch.
 function firstPinColor(layer){
@@ -743,16 +866,24 @@ function openPopup(feature){
   const header = document.querySelector('.popup-header');
   header.style.borderLeftColor = layerColor;
 
+  popupEl.classList.remove('expanded');
   popupEl.classList.add('open');
 }
 
 function closePopup(){
   popupEl.classList.remove('open');
+  popupEl.classList.remove('expanded');
 }
 
 document.getElementById('popup-close-btn').addEventListener('click', (e) => {
   e.stopPropagation();
   closePopup();
+});
+
+document.querySelector('.popup-shell').addEventListener('click', () => {
+  if (isMobileViewport() && !popupEl.classList.contains('expanded')){
+    popupEl.classList.add('expanded');
+  }
 });
 
 // Prevent clicks inside the popup card from bubbling to the map
@@ -781,18 +912,23 @@ const layersToggleText = layersToggleBtn.querySelector('.toggle-text');
 const layerPanelEl = document.getElementById('layer-panel');
 
 function isMobileViewport(){
-  return window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT}px)`).matches;
+  return window.matchMedia(
+    `(max-width: ${MOBILE_BREAKPOINT}px), (max-height: 600px) and (max-width: 1024px)`
+  ).matches;
 }
 
 function isLayersPanelOpen(){
   return isMobileViewport()
-    ? document.body.classList.contains('layers-mobile-open')
+    ? document.body.classList.contains(risalaModeActive
+      ? 'layers-risala-mobile-open'
+      : 'layers-mobile-open')
     : !document.body.classList.contains('layers-hidden');
 }
 
 function setLayersPanelOpen(open){
   if (isMobileViewport()){
-    document.body.classList.toggle('layers-mobile-open', open);
+    document.body.classList.toggle('layers-mobile-open', !risalaModeActive && open);
+    document.body.classList.toggle('layers-risala-mobile-open', risalaModeActive && open);
   } else {
     document.body.classList.toggle('layers-hidden', !open);
   }
@@ -813,7 +949,10 @@ layersToggleBtn.addEventListener('click', () => {
 
 document.addEventListener('pointerdown', (e) => {
   if (!isLayersPanelOpen()) return;
-  if (layerPanelEl.contains(e.target) || layersToggleBtn.contains(e.target)) return;
+  const activePanelEl = risalaModeActive
+    ? document.getElementById('risala-mode-panel')
+    : layerPanelEl;
+  if (activePanelEl.contains(e.target) || layersToggleBtn.contains(e.target)) return;
 
   setLayersPanelOpen(false);
   syncLayersPanelState();
@@ -824,6 +963,7 @@ window.addEventListener('resize', () => {
     document.body.classList.remove('layers-hidden');
   } else {
     document.body.classList.remove('layers-mobile-open');
+    document.body.classList.remove('layers-risala-mobile-open');
   }
   syncLayersPanelState();
 });
@@ -831,6 +971,7 @@ window.addEventListener('resize', () => {
 // Start with layers panel hidden; user opens it with the toggle button.
 if (isMobileViewport()){
   document.body.classList.remove('layers-mobile-open');
+  document.body.classList.remove('layers-risala-mobile-open');
 } else {
   document.body.classList.add('layers-hidden');
 }
