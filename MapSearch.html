@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>خزانة الخرائط القديمة</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+ <aside class="side" id="side" aria-label="قائمة الأماكن">
+  <div class="side-in"><h2 id="sideTitle">الأماكن</h2><ul id="sideList"></ul></div>
+ </aside>
+ <div class="scrim off" id="scrim"></div>
+ <main id="main">
+  <header>
+   <button class="tog" id="tog" aria-label="إظهار أو إخفاء القائمة الجانبية" aria-expanded="true">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+   </button>
+   <h1>الخرائط القديمة</h1>
+   <p class="sub"></p>
+   <div class="sb">
+    <input id="q" type="search" placeholder="اكتب اسم مكان…" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="dd" enterkeyhint="search">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+    <ul class="dd" id="dd" role="listbox" hidden></ul>
+   </div>
+  </header>
+  <section id="results"></section>
+ </main>
+</div>
+
+<div id="viewer" hidden>
+ <div id="vp"><div id="stage"></div></div>
+ <div id="load">جارٍ تحميل الخريطة…</div>
+ <div class="vbar vtop">
+  <button class="pill" id="back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>رجوع</button>
+  <span class="pill vname" id="vname"></span>
+ </div>
+ <div class="vbar vbot">
+  <button class="pill round" id="zi" aria-label="تكبير">+</button>
+  <button class="pill round" id="zo" aria-label="تصغير">−</button>
+  <button class="pill" id="zf">الخريطة كاملة</button>
+ </div>
+ <span id="nav" class="vbar" hidden>
+  <button class="pill" id="pv">السابق</button><span class="pill" id="ct"></span><button class="pill" id="nx">التالي</button>
+ </span>
+</div>
+
+<script src="mapsearch.js"></script>
+</body>
+</html>

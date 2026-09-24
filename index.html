@@ -299,6 +299,7 @@ body.risala-mode::before{
   gap: 10px;
   direction: rtl;
   text-align: right;
+  text-decoration: none;
   transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease, color 0.22s ease;
 }
 
@@ -336,6 +337,13 @@ body.risala-mode::before{
   background: linear-gradient(135deg, #0F8B8D, #126E82);
   color: #fff;
   box-shadow: 0 8px 18px rgba(15, 139, 141, 0.24);
+  min-height: 44px;
+}
+
+#old-maps-btn{
+  background: linear-gradient(135deg, #D4A017, #B87914);
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(212, 160, 23, 0.24);
   min-height: 44px;
 }
 
@@ -1052,6 +1060,9 @@ body.layers-hidden #layer-panel{
     </div>
 
     <div class="toolbar-actions">
+      <a class="toolbar-btn" id="old-maps-btn" href="MapSearch.html" title="فتح الخرائط القديمة">
+        <span class="btn-text">الخرائط القديمة</span>
+      </a>
       <button class="toolbar-btn" id="risala-mode-btn" type="button" aria-pressed="false" title="عرض RisalaCoordinates بخلفية بيضاء">
         <span class="btn-text">المواقع حسب الرسالة الشريفة</span>
       </button>
