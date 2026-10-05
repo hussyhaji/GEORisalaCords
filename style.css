@@ -48,8 +48,11 @@ h1{font-size:2rem;color:var(--brown);line-height:1.3}
 .card:hover .zoom,.card:focus-visible .zoom{transform:scale(1.06)}
 .zoom img{display:block;width:100%;height:auto}
 .hl{position:absolute;background:rgba(var(--hl),.4);box-shadow:0 0 0 2px rgba(214,150,0,.9);mix-blend-mode:multiply;opacity:0;transition:opacity .3s}
+.hl-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+.hl-poly{fill:rgba(var(--hl),.4);stroke:rgba(214,150,0,.9);stroke-width:.45;opacity:0;transition:opacity .3s}
 .card:hover .hl,.card:focus-visible .hl{opacity:1}
-@media (hover:none){.hl{opacity:.75}}
+.card:hover .hl-poly,.card:focus-visible .hl-poly{opacity:1}
+@media (hover:none){.hl,.hl-poly{opacity:.75}}
 .cap{display:flex;justify-content:space-between;gap:.6rem;align-items:center;padding-top:.45rem;font-size:.85rem}
 .fn{direction:ltr;unicode-bidi:plaintext;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.75;min-width:0}
 .chip{flex:none;background:var(--brown);color:var(--paper);border-radius:999px;padding:0 .7rem}
@@ -62,7 +65,10 @@ h1{font-size:2rem;color:var(--brown);line-height:1.3}
 #stage{position:absolute;left:0;top:0;transform-origin:0 0;--inv:1}
 #stage img{display:block;width:100%;height:100%;user-select:none;-webkit-user-drag:none}
 #stage .hl{opacity:1;box-shadow:0 0 0 calc(2px*var(--inv)) rgba(214,150,0,.95);border-radius:calc(3px*var(--inv))}
+#stage .hl-svg{width:100%;height:100%}
+#stage .hl-poly{opacity:1;stroke-width:2px;vector-effect:non-scaling-stroke}
 #stage .hl.cur{background:rgba(var(--hl),.5)}
+#stage .hl-poly.cur{fill:rgba(var(--hl),.5)}
 .vbar{position:absolute;z-index:5;display:flex;gap:.5rem;align-items:center}
 .vtop{top:calc(.8rem + env(safe-area-inset-top));inset-inline:.8rem}
 .pill{background:rgba(246,237,222,.94);color:var(--ink);border-radius:999px;padding:.3rem 1rem;display:inline-flex;align-items:center;gap:.4rem;box-shadow:0 4px 14px rgba(0,0,0,.35);min-height:44px;transition:background .2s}

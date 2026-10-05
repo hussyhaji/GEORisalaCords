@@ -33,7 +33,14 @@ foreach ($p in $data.PSObject.Properties) {
   $bad = $false
   foreach ($r in $e.regions) {
     $a = $r.shape_attributes
-    if (($a.x + $a.width) -gt ($w + 1) -or ($a.y + $a.height) -gt ($h + 1)) { $bad = $true }
+    if ($a.name -eq 'rect') {
+      if ($a.x -lt 0 -or $a.y -lt 0 -or $a.width -le 0 -or $a.height -le 0 -or ($a.x + $a.width) -gt ($w + 1) -or ($a.y + $a.height) -gt ($h + 1)) { $bad = $true }
+    } elseif ($a.name -eq 'polygon') {
+      if ($a.all_points_x.Count -lt 3 -or $a.all_points_x.Count -ne $a.all_points_y.Count) { $bad = $true; continue }
+      for ($i = 0; $i -lt $a.all_points_x.Count; $i++) {
+        if ($a.all_points_x[$i] -lt 0 -or $a.all_points_x[$i] -gt ($w + 1) -or $a.all_points_y[$i] -lt 0 -or $a.all_points_y[$i] -gt ($h + 1)) { $bad = $true }
+      }
+    } else { $bad = $true }
   }
   if ($bad) {
     Write-Host "SKIPPED           : $($e.filename) is ${w}x${h}, but regions go outside it. Use the ORIGINAL full-size image." -ForegroundColor Yellow
@@ -42,10 +49,15 @@ foreach ($p in $data.PSObject.Properties) {
 
   foreach ($r in $e.regions) {
     $a = $r.shape_attributes
-    $a.x      = [math]::Round($a.x / $w * 100, 4)
-    $a.y      = [math]::Round($a.y / $h * 100, 4)
-    $a.width  = [math]::Round($a.width / $w * 100, 4)
-    $a.height = [math]::Round($a.height / $h * 100, 4)
+    if ($a.name -eq 'rect') {
+      $a.x      = [math]::Round($a.x / $w * 100, 4)
+      $a.y      = [math]::Round($a.y / $h * 100, 4)
+      $a.width  = [math]::Round($a.width / $w * 100, 4)
+      $a.height = [math]::Round($a.height / $h * 100, 4)
+    } else {
+      $a.all_points_x = @($a.all_points_x | ForEach-Object { [math]::Round($_ / $w * 100, 4) })
+      $a.all_points_y = @($a.all_points_y | ForEach-Object { [math]::Round($_ / $h * 100, 4) })
+    }
   }
   $e | Add-Member -NotePropertyName unit         -NotePropertyValue 'percent' -Force
   $e | Add-Member -NotePropertyName image_width  -NotePropertyValue $w -Force
