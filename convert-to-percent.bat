@@ -35,8 +35,10 @@ foreach ($p in $data.PSObject.Properties) {
     $a = $r.shape_attributes
     if ($a.name -eq 'rect') {
       if ($a.x -lt 0 -or $a.y -lt 0 -or $a.width -le 0 -or $a.height -le 0 -or ($a.x + $a.width) -gt ($w + 1) -or ($a.y + $a.height) -gt ($h + 1)) { $bad = $true }
-    } elseif ($a.name -eq 'polygon') {
-      if ($a.all_points_x.Count -lt 3 -or $a.all_points_x.Count -ne $a.all_points_y.Count) { $bad = $true; continue }
+    } elseif ($a.name -eq 'polygon' -or $a.name -eq 'polyline') {
+      $minPoints = 3
+      if ($a.name -eq 'polyline') { $minPoints = 2 }
+      if ($a.all_points_x.Count -lt $minPoints -or $a.all_points_x.Count -ne $a.all_points_y.Count) { $bad = $true; continue }
       for ($i = 0; $i -lt $a.all_points_x.Count; $i++) {
         if ($a.all_points_x[$i] -lt 0 -or $a.all_points_x[$i] -gt ($w + 1) -or $a.all_points_y[$i] -lt 0 -or $a.all_points_y[$i] -gt ($h + 1)) { $bad = $true }
       }

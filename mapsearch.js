@@ -12,11 +12,11 @@ function fromVia(o){return Object.values(o).map(e=>({f:e.filename,u:e.unit==='pe
  const a=g.shape_attributes,n=(g.region_attributes.name||'').trim();
  if(!n)return null;
  if(a.name==='rect')return{shape:'rect',x:a.x,y:a.y,w:a.width,h:a.height,n};
- if(a.name==='polygon'){
+ if(a.name==='polygon'||a.name==='polyline'){
   const points=a.all_points_x.map((x,i)=>[x,a.all_points_y[i]]);
-  if(points.length<3||points.length!==a.all_points_y.length)return null;
+  if(points.length<(a.name==='polygon'?3:2)||points.length!==a.all_points_y.length)return null;
   const xs=points.map(p=>p[0]),ys=points.map(p=>p[1]),x=Math.min(...xs),y=Math.min(...ys);
-  return{shape:'polygon',x,y,w:Math.max(...xs)-x,h:Math.max(...ys)-y,points,n};
+  return{shape:a.name,x,y,w:Math.max(...xs)-x,h:Math.max(...ys)-y,points,n};
  }
  return null;
  }).filter(Boolean)}))}
@@ -85,9 +85,9 @@ function runSearch(label,exact){
   im.alt=m.f;im.loading='lazy';im.decoding='async';
   im.onload=()=>{
    const baseW=m.u==='percent'?100:im.naturalWidth,baseH=m.u==='percent'?100:im.naturalHeight;
-   const polygons=hits.filter(r=>r.shape==='polygon');
+   const vectors=hits.filter(r=>r.shape==='polygon'||r.shape==='polyline');
    hits.filter(r=>r.shape==='rect').forEach(r=>{const d=document.createElement('div');d.className='hl';d.style.cssText=`left:${r.x/baseW*100}%;top:${r.y/baseH*100}%;width:${r.w/baseW*100}%;height:${r.h/baseH*100}%`;z.appendChild(d)});
-   if(polygons.length){const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 100 100');svg.setAttribute('preserveAspectRatio','none');svg.classList.add('hl-svg');polygons.forEach(r=>{const p=document.createElementNS(svg.namespaceURI,'polygon');p.classList.add('hl-poly');p.setAttribute('points',r.points.map(([x,y])=>`${x/baseW*100},${y/baseH*100}`).join(' '));svg.appendChild(p)});z.appendChild(svg)}
+   if(vectors.length){const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 100 100');svg.setAttribute('preserveAspectRatio','none');svg.classList.add('hl-svg');vectors.forEach(r=>{const p=document.createElementNS(svg.namespaceURI,r.shape);p.classList.add(r.shape==='polygon'?'hl-poly':'hl-line');p.setAttribute('points',r.points.map(([x,y])=>`${x/baseW*100},${y/baseH*100}`).join(' '));svg.appendChild(p)});z.appendChild(svg)}
    c.querySelector('.pic').style.minHeight='0';
   };
   im.src=src(m.f);z.appendChild(im);
@@ -104,7 +104,7 @@ function apply(anim){stage.style.transition=anim?'transform .95s cubic-bezier(.2
 function fit(anim){const w=vp.clientWidth,h=vp.clientHeight;V.fit=V.s=Math.min(w/V.nw,h/V.nh);V.tx=(w-V.nw*V.s)/2;V.ty=(h-V.nh*V.s)/2;apply(anim)}
 function focusOn(r,anim){const w=vp.clientWidth,h=vp.clientHeight;let s=Math.min(w/(r.w*3.5),h/(r.h*3.5));s=Math.min(Math.max(s,V.fit),8);V.s=s;V.tx=w/2-(r.x+r.w/2)*s;V.ty=h/2-(r.y+r.h/2)*s;apply(anim)}
 function zoomAt(cx,cy,f){const ns=Math.min(Math.max(V.s*f,V.fit*.7),16);V.tx=cx-(cx-V.tx)*ns/V.s;V.ty=cy-(cy-V.ty)*ns/V.s;V.s=ns;apply(false)}
-function mark(){[...stage.querySelectorAll('.hl,.hl-poly')].forEach(d=>d.classList.toggle('cur',Number(d.dataset.hitIndex)===V.i));$('ct').textContent=fmt(V.i+1)+' / '+fmt(V.hits.length)}
+function mark(){[...stage.querySelectorAll('.hl,.hl-poly,.hl-line')].forEach(d=>d.classList.toggle('cur',Number(d.dataset.hitIndex)===V.i));$('ct').textContent=fmt(V.i+1)+' / '+fmt(V.hits.length)}
 
 function openViewer(m,hits){
  $('viewer').hidden=false;document.body.classList.add('lock');
@@ -117,9 +117,9 @@ function openViewer(m,hits){
     V.hits=hits.map(r=>m.u==='percent'?{...r,x:r.x*V.nw/100,y:r.y*V.nh/100,w:r.w*V.nw/100,h:r.h*V.nh/100,points:r.points&&r.points.map(([x,y])=>[x*V.nw/100,y*V.nh/100])}:r);
     stage.style.width=V.nw+'px';stage.style.height=V.nh+'px';
     stage.appendChild(im);
-    V.hits.forEach((r,i)=>{if(r.shape==='polygon')return;const d=document.createElement('div');d.className='hl';d.dataset.hitIndex=i;d.style.cssText=`left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px`;stage.appendChild(d)});
-    const polygons=V.hits.filter(r=>r.shape==='polygon');
-    if(polygons.length){const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox',`0 0 ${V.nw} ${V.nh}`);svg.classList.add('hl-svg');V.hits.forEach((r,i)=>{if(r.shape!=='polygon')return;const p=document.createElementNS(svg.namespaceURI,'polygon');p.classList.add('hl-poly');p.dataset.hitIndex=i;p.setAttribute('points',r.points.map(([x,y])=>`${x},${y}`).join(' '));svg.appendChild(p)});stage.appendChild(svg)}
+    V.hits.forEach((r,i)=>{if(r.shape==='polygon'||r.shape==='polyline')return;const d=document.createElement('div');d.className='hl';d.dataset.hitIndex=i;d.style.cssText=`left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px`;stage.appendChild(d)});
+    const vectors=V.hits.filter(r=>r.shape==='polygon'||r.shape==='polyline');
+    if(vectors.length){const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox',`0 0 ${V.nw} ${V.nh}`);svg.classList.add('hl-svg');V.hits.forEach((r,i)=>{if(r.shape!=='polygon'&&r.shape!=='polyline')return;const p=document.createElementNS(svg.namespaceURI,r.shape);p.classList.add(r.shape==='polygon'?'hl-poly':'hl-line');p.dataset.hitIndex=i;p.setAttribute('points',r.points.map(([x,y])=>`${x},${y}`).join(' '));svg.appendChild(p)});stage.appendChild(svg)}
     $('load').hidden=true;fit(false);
     if(hits.length){
        mark();
