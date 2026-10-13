@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 <div class="app">
@@ -33,12 +33,29 @@
 </div>
 
 <div id="viewer" hidden>
- <div id="vp"><div id="stage"></div></div>
+ <div id="vp"><div id="stage"></div><div id="labels"></div></div>
  <div id="load">جارٍ تحميل الخريطة…</div>
- <div class="vbar vtop">
-  <button class="pill" id="back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>رجوع</button>
-  <span class="pill vname" id="vname"></span>
+
+ <aside class="vside closed" id="vside" aria-label="أماكن هذه الخريطة">
+  <div class="vside-in">
+   <div class="vhead">
+    <h2 id="vsTitle">أماكن الخريطة</h2>
+    <button class="vx" id="vclose" aria-label="إغلاق القائمة"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+   </div>
+   <div class="vsb"><div class="sb">
+    <input id="vq" type="search" placeholder="ابحث في هذه الخريطة…" autocomplete="off" enterkeyhint="search">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+   </div></div>
+   <ul id="vsList"></ul>
+  </div>
+ </aside>
+
+ <div class="vright">
+  <button class="pill round" id="vtog" aria-label="أماكن هذه الخريطة" aria-expanded="false" aria-controls="vside"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
  </div>
+ <div class="vleft"><button class="pill" id="showAll" aria-pressed="false">اظهر كل المواضع</button></div>
+ <span class="pill vname"><span id="vname"></span></span>
+
  <div class="vbar vbot">
   <button class="pill round" id="zi" aria-label="تكبير">+</button>
   <button class="pill round" id="zo" aria-label="تصغير">−</button>
@@ -49,6 +66,6 @@
  </span>
 </div>
 
-<script src="mapsearch.js"></script>
+<script src="mapsearch.js?v=5"></script>
 </body>
 </html>
