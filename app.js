@@ -4,8 +4,10 @@
    basemap URL, and a few style knobs. Change these, not the logic.
    ================================================================ */
 
-// Path to the local CSV data source (columns documented in README).
-const CSV_URL = 'RisalaCoordinates.csv';
+// Supabase table holding the former RisalaCoordinates.csv data (publishable key, read-only via RLS).
+const SUPABASE_URL = 'https://yrlpnxinqtugjzmrzidd.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_MvInXUZZezxug9fnbdp1MQ_7QrRGtok';
+const SUPABASE_TABLE = 'RisalaCoordinates';
 
 // Display labels for the popup card — rename here to change vocabulary
 // anywhere in the UI without touching the rendering logic below.
@@ -299,23 +301,36 @@ if (typeof window.initMapMeasure === 'function'){
 
 const sourceExtentFeatures = []; // used to fit the view once loaded
 
-Papa.parse(CSV_URL, {
-  download: true,
-  header: true,
-  skipEmptyLines: true,
-  complete: function(results){
-    buildLayersFromRows(results.data);
-    document.getElementById('loading-overlay').classList.add('hidden');
-  },
-  error: function(err){
-    console.error('CSV load/parse error:', err);
-    document.getElementById('loading-overlay').innerHTML =
-      `<div style="max-width:320px;text-align:center;">
-         Could not load <b>${CSV_URL}</b>.<br>
-         Make sure the file sits next to this HTML page and that you are
-         viewing it over http:// (not file://).
-       </div>`;
+async function fetchSupabaseRows(){
+  const pageSize = 1000;
+  const all = [];
+  for (let from = 0; ; from += pageSize){
+    const url = SUPABASE_URL + '/rest/v1/' + SUPABASE_TABLE +
+      '?select=*&order=Srno.asc&limit=' + pageSize + '&offset=' + from;
+    const res = await fetch(url, { headers: { apikey: SUPABASE_KEY } });
+    if (!res.ok) throw new Error(`Supabase ${res.status}: ${await res.text()}`);
+    const page = await res.json();
+    all.push(...page);
+    if (page.length < pageSize) break;
   }
+  // Match the old CSV shape: every value a string, null -> ''.
+  return all.map(r => {
+    const o = {};
+    Object.keys(r).forEach(k => { o[k] = r[k] == null ? '' : String(r[k]); });
+    return o;
+  });
+}
+
+fetchSupabaseRows().then(rows => {
+  buildLayersFromRows(rows);
+  document.getElementById('loading-overlay').classList.add('hidden');
+}).catch(err => {
+  console.error('Supabase load error:', err);
+  document.getElementById('loading-overlay').innerHTML =
+    `<div style="max-width:320px;text-align:center;">
+       Could not load table <b>${SUPABASE_TABLE}</b> from Supabase.<br>
+       Check that the SQL import was run and the read policy exists.
+     </div>`;
 });
 
 function buildLayersFromRows(rows){
