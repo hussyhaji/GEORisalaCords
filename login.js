@@ -1,12 +1,9 @@
 (function(){
 'use strict';
 
-/* ===== Configuration ===== */
-// Paste your OAuth 2.0 Web Client ID (Google Cloud Console > APIs & Services > Credentials).
-var GOOGLE_CLIENT_ID = 'YOUR_CLIENT_ID.apps.googleusercontent.com';
-var ALLOWED_DOMAIN = 'jameasaifiyah.edu';
+/* ===== Config ===== */
 var REDIRECT_TO = 'index.html';
-var SESSION_KEY = 'geo.auth';
+var MIN_MS = 1200;
 
 var NS = 'http://www.w3.org/2000/svg';
 function el(name, attrs, parent){
@@ -18,14 +15,6 @@ function el(name, attrs, parent){
 var $ = function(id){ return document.getElementById(id); };
 var AR_DIGITS = '٠١٢٣٤٥٦٧٨٩';
 function arNum(n){ return String(n).replace(/\d/g, function(d){ return AR_DIGITS[d]; }); }
-
-/* ===== Already signed in? ===== */
-(function(){
- try {
-  var s = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null');
-  if (s && s.exp * 1000 > Date.now() && isAllowed(s)) location.replace(REDIRECT_TO);
- } catch (e) {}
-})();
 
 /* ===== Decorative scene ===== */
 function buildGraticule(){
@@ -108,8 +97,6 @@ function setCorners(lat, lon){
  $('cTR').innerHTML = '<span>LON</span> ' + dmsLatin(lon, 'E', 'W');
  $('cBL').innerHTML = '<span>CLIMATE</span> ' + (1 + Math.floor(Math.abs(lat) / 12) % 7);
  $('cBR').innerHTML = '<span>سنة</span> ١٤٤٨ هـ';
- $('lat').textContent = dms(lat, 'ش', 'ج');
- $('lon').textContent = dms(lon, 'ق', 'غ');
 }
 var lat = 21.4225, lon = 39.8262, tLat = lat, tLon = lon;
 setInterval(function(){
@@ -137,70 +124,36 @@ if (window.matchMedia('(pointer:fine)').matches) {
  document.addEventListener('pointerleave', function(){ cross.hidden = true; });
 }
 
-/* ===== Auth ===== */
-function parseJwt(token){
- var b = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
- var json = decodeURIComponent(atob(b).split('').map(function(c){
-  return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
- }).join(''));
- return JSON.parse(json);
-}
-function isAllowed(p){
- var email = String(p.email || '').toLowerCase();
- return email.endsWith('@' + ALLOWED_DOMAIN) && p.email_verified !== false &&
-  (p.hd === undefined || String(p.hd).toLowerCase() === ALLOWED_DOMAIN);
-}
-function showMsg(text, ok){
- var m = $('msg');
- m.hidden = false; m.textContent = text;
- m.className = 'msg' + (ok ? ' ok' : '');
- // restart the shake animation
- m.style.animation = 'none'; void m.offsetWidth; m.style.animation = '';
-}
-
-function onCredential(resp){
- var p;
- try { p = parseJwt(resp.credential); } catch (e) { return showMsg('تعذّر قراءة بيانات الدخول، حاول مرة أخرى.'); }
- if (!isAllowed(p)) {
-  if (window.google && google.accounts) google.accounts.id.disableAutoSelect();
-  return showMsg('عذرًا، الدخول مقصور على حسابات @' + ALLOWED_DOMAIN + ' فقط.');
- }
- sessionStorage.setItem(SESSION_KEY, JSON.stringify({
-  email: p.email, name: p.name, picture: p.picture, exp: p.exp, credential: resp.credential
- }));
- showMsg('أهلًا بك يا ' + (p.given_name || p.name || '') + ' — جارٍ فتح الخزانة…', true);
- document.body.classList.add('leaving');
- setTimeout(function(){ location.href = REDIRECT_TO; }, 900);
-}
-
-function initGoogle(){
- if (!window.google || !google.accounts || !google.accounts.id) return false;
- if (/^YOUR_CLIENT_ID/.test(GOOGLE_CLIENT_ID)) {
-  $('gwait').textContent = 'لم يُضبط معرّف عميل جوجل بعد (GOOGLE_CLIENT_ID في login.js).';
-  return true;
- }
- google.accounts.id.initialize({
-  client_id: GOOGLE_CLIENT_ID,
-  callback: onCredential,
-  hd: ALLOWED_DOMAIN,
-  auto_select: false,
-  ux_mode: 'popup'
- });
- google.accounts.id.renderButton($('gbtn'), {
-  theme: 'outline', size: 'large', shape: 'rectangular', text: 'signin_with', logo_alignment: 'left',
-  width: 280, locale: 'ar'
- });
- document.querySelector('.gwrap').classList.add('ready');
- return true;
+/* ===== Loading bar ===== */
+var barFill = $('barFill'), bar = $('bar'), pct = $('pct');
+function setProgress(v){
+ v = Math.min(100, Math.max(0, Math.round(v)));
+ barFill.style.width = v + '%';
+ bar.setAttribute('aria-valuenow', v);
+ pct.textContent = arNum(v) + '٪';
 }
 
 buildGraticule(); buildRings(); buildRose(); buildPins();
 
-var tries = 0;
-(function wait(){
- if (initGoogle()) return;
- if (++tries > 100) { $('gwait').textContent = 'تعذّر تحميل خدمة جوجل. تحقّق من الاتصال بالإنترنت.'; return; }
- setTimeout(wait, 100);
+var start = Date.now(), pageReady = document.readyState === 'complete', done = false, shown = 0;
+window.addEventListener('load', function(){ pageReady = true; });
+
+(function step(){
+ if (done) return;
+ var elapsed = Date.now() - start;
+ // ease toward 90% over MIN_MS; the last 10% waits for the page to finish loading
+ var target = Math.min(90, elapsed / MIN_MS * 90);
+ if (pageReady && elapsed >= MIN_MS) target = 100;
+ shown += (target - shown) * .12;
+ if (target === 100 && shown > 99.5) shown = 100;
+ setProgress(shown);
+ if (shown >= 100) {
+  done = true;
+  document.body.classList.add('leaving');
+  setTimeout(function(){ location.href = REDIRECT_TO; }, 900);
+  return;
+ }
+ requestAnimationFrame(step);
 })();
 
 })();

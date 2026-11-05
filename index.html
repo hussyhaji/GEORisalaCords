@@ -100,28 +100,120 @@ body.risala-mode::before{
    LOADING OVERLAY (shown while CSV is fetched / parsed)
    ============================================================ */
 #loading-overlay{
+  --l-ink:#3a2814; --l-ink2:#5b4125; --l-lapis:#1f3a5f; --l-teal:#1d5c5a;
+  --l-madder:#8c2f23; --l-gold:#b8862b; --l-gold2:#e2b857;
   position: absolute;
   inset: 0;
-  background: var(--ink);
-  color: var(--cream);
+  background: linear-gradient(135deg, #ead9ab, #d9be84 60%, #b8985c);
+  color: var(--l-ink);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  gap: 12px;
+  text-align: center;
   font-family: var(--font-display);
   z-index: 50;
+  overflow: hidden;
   transition: opacity 0.4s ease;
 }
 #loading-overlay.hidden{ opacity: 0; pointer-events: none; }
-.spinner{
-  width: 34px; height: 34px;
-  border: 4px solid rgba(255,255,255,0.2);
-  border-top-color: var(--lavender);
-  border-radius: 50%;
-  animation: spin 0.9s linear infinite;
+.ld-stage{ position: relative; z-index: 5; display: flex; flex-direction: column; align-items: center; padding: 1.5rem; animation: ld-rise .5s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes ld-rise{ from{ opacity: 0; transform: translateY(28px) scale(.97); } to{ opacity: 1; transform: none; } }
+
+/* background scene: vignette, graticule, routes, pins, astrolabe, corner readouts */
+.ld-parch{
+  position: absolute; inset: 0; z-index: 0;
+  background:
+    radial-gradient(ellipse at 50% 45%, transparent 35%, rgba(70,40,12,.55) 100%),
+    radial-gradient(circle at 18% 22%, rgba(255,244,210,.55), transparent 38%),
+    radial-gradient(circle at 82% 78%, rgba(150,100,40,.35), transparent 40%),
+    repeating-linear-gradient(47deg, rgba(120,80,30,.035) 0 2px, transparent 2px 5px);
+  animation: ld-breathe 14s ease-in-out infinite alternate;
 }
-@keyframes spin{ to{ transform: rotate(360deg); } }
+@keyframes ld-breathe{ from{ filter: brightness(1); } to{ filter: brightness(1.07) saturate(1.08); } }
+.ld-world{ position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+.ld-grat{ fill: none; stroke: var(--l-ink2); stroke-opacity: .32; stroke-width: .9; transform-box: fill-box; transform-origin: center; animation: ld-drift 90s linear infinite; }
+.ld-grat .eq{ stroke: var(--l-madder); stroke-opacity: .55; stroke-width: 1.4; }
+.ld-grat .mer0{ stroke: var(--l-lapis); stroke-opacity: .5; stroke-width: 1.3; }
+@keyframes ld-drift{
+  from{ transform: rotate(0) scale(1.05); } 50%{ transform: rotate(180deg) scale(1.18); } to{ transform: rotate(360deg) scale(1.05); }
+}
+.ld-route path{ fill: none; stroke: var(--l-madder); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 3 9; animation: ld-march 14s linear infinite; opacity: .7; }
+.ld-route path + path{ stroke: var(--l-teal); animation-duration: 20s; animation-direction: reverse; }
+@keyframes ld-march{ to{ stroke-dashoffset: -240; } }
+.ld-pin circle{ fill: var(--l-madder); opacity: .85; }
+.ld-pin .halo{ fill: none; stroke: var(--l-madder); stroke-width: 1.5; transform-box: fill-box; transform-origin: center; animation: ld-ping 3.2s ease-out infinite; }
+.ld-pin text{ font-family: 'Amiri', serif; font-size: 15px; fill: var(--l-ink); text-anchor: middle; }
+@keyframes ld-ping{ 0%{ transform: scale(.4); opacity: .9; } 100%{ transform: scale(2.6); opacity: 0; } }
+.ld-astro{
+  position: absolute; z-index: 2; pointer-events: none; top: 50%; left: 50%;
+  width: min(130vmin, 1100px); aspect-ratio: 1; transform: translate(-50%, -50%); opacity: .9;
+}
+.ld-ring circle{ fill: none; stroke: var(--l-gold); stroke-width: 1.6; }
+.ld-ring-outer circle:nth-child(2){ stroke: var(--l-ink2); stroke-width: .8; stroke-dasharray: 1 5; }
+.ld-ring-mid circle{ stroke: var(--l-teal); stroke-opacity: .7; stroke-dasharray: 14 6 2 6; }
+.ld-ring text{ font-family: 'Amiri', serif; font-size: 19px; fill: var(--l-ink2); text-anchor: middle; dominant-baseline: middle; }
+.ld-ring-outer{ transform-box: fill-box; transform-origin: center; animation: ld-spin 140s linear infinite; }
+.ld-ring-mid{ transform-box: fill-box; transform-origin: center; animation: ld-spin 90s linear infinite reverse; }
+.ld-rose{ transform-box: fill-box; transform-origin: center; animation: ld-spin 220s linear infinite; }
+.ld-rose .pt{ fill: var(--l-ink); fill-opacity: .12; stroke: var(--l-ink2); stroke-width: 1; }
+.ld-rose .pt.a{ fill: var(--l-madder); fill-opacity: .2; }
+.ld-rose .pt.b{ fill: var(--l-lapis); fill-opacity: .18; }
+.ld-corner{
+  position: absolute; z-index: 3; font-family: 'Amiri', serif; font-size: 13px; letter-spacing: .06em;
+  color: var(--l-ink2); padding: .5rem .8rem; line-height: 1.7; pointer-events: none; direction: ltr;
+}
+.ld-corner::before{ content: ""; position: absolute; width: 26px; height: 26px; border: 2px solid var(--l-gold); }
+.ld-tl{ top: 10px; left: 10px; } .ld-tl::before{ top: 0; left: 0; border-right: 0; border-bottom: 0; }
+.ld-tr{ top: 10px; right: 10px; text-align: right; } .ld-tr::before{ top: 0; right: 0; border-left: 0; border-bottom: 0; }
+.ld-bl{ bottom: 10px; left: 10px; } .ld-bl::before{ bottom: 0; left: 0; border-right: 0; border-top: 0; }
+.ld-br{ bottom: 10px; right: 10px; text-align: right; } .ld-br::before{ bottom: 0; right: 0; border-left: 0; border-top: 0; }
+.ld-corner span{ opacity: .55; }
+@media (max-width: 560px){ .ld-corner{ display: none; } }
+
+.ld-seal{ width: 104px; height: 104px; margin-bottom: 1rem; filter: drop-shadow(0 3px 4px rgba(58,40,20,.35)); }
+.ld-seal svg{ width: 100%; height: 100%; overflow: visible; }
+.ld-ring-s{ fill: #f6ebc6; stroke: var(--l-gold); stroke-width: 3; }
+.ld-ring-s.thin{ fill: none; stroke: var(--l-ink); stroke-width: 1; }
+.ld-ticks path{ stroke: var(--l-ink); stroke-width: 1.6; fill: none; }
+.ld-ticks .minor{ stroke-width: 1; stroke: var(--l-ink2); }
+.ld-card{ transform-box: fill-box; transform-origin: center; animation: ld-spin 40s linear infinite reverse; }
+.ld-v{ fill: var(--l-lapis); fill-opacity: .25; stroke: var(--l-lapis); stroke-width: .8; }
+.ld-h{ fill: var(--l-teal); fill-opacity: .22; stroke: var(--l-teal); stroke-width: .8; }
+.ld-needle{ transform-box: fill-box; transform-origin: center; animation: ld-seek 5s ease-in-out infinite; }
+.ld-n{ fill: var(--l-madder); stroke: var(--l-ink); stroke-width: .8; }
+.ld-s{ fill: #f3e6bd; stroke: var(--l-ink); stroke-width: .8; }
+.ld-c{ fill: var(--l-gold2); stroke: var(--l-ink); stroke-width: 1; }
+.ld-dot{ fill: var(--l-ink); }
+@keyframes ld-spin{ to{ transform: rotate(360deg); } }
+@keyframes ld-seek{
+  0%{ transform: rotate(0); } 25%{ transform: rotate(110deg); } 40%{ transform: rotate(80deg); }
+  70%{ transform: rotate(250deg); } 85%{ transform: rotate(225deg); } 100%{ transform: rotate(360deg); }
+}
+.ld-text{ font-size: 1.3rem; font-weight: 700; color: var(--l-ink); }
+.ld-dots span{ animation: ld-blink 1.4s infinite both; }
+.ld-dots span:nth-child(2){ animation-delay: .2s; }
+.ld-dots span:nth-child(3){ animation-delay: .4s; }
+@keyframes ld-blink{ 0%,80%,100%{ opacity: .15; } 40%{ opacity: 1; } }
+.ld-bar{
+  position: relative; height: 14px; width: min(340px, 80vw); margin-top: 1rem; direction: ltr;
+  background: rgba(58,40,20,.12); border: 2px solid var(--l-ink); border-radius: 8px;
+  box-shadow: inset 0 2px 4px rgba(58,40,20,.35), 0 0 0 3px rgba(184,134,43,.35); overflow: hidden;
+}
+.ld-fill{
+  height: 100%; width: 0; border-radius: 6px;
+  background:
+    repeating-linear-gradient(45deg, rgba(255,255,255,.22) 0 8px, transparent 8px 16px),
+    linear-gradient(90deg, var(--l-madder), var(--l-gold2));
+  background-size: 32px 32px, 100% 100%;
+  animation: ld-bar 1s linear infinite;
+  transition: width .25s ease-out;
+}
+@keyframes ld-bar{ to{ background-position: 32px 0, 0 0; } }
+.ld-pct{ margin-top: .6rem; font-size: 1rem; color: var(--l-ink2); direction: ltr; }
+@media (prefers-reduced-motion: reduce){
+  #loading-overlay *{ animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+}
 
 /* ============================================================
    TOP TOOLBAR
@@ -1045,8 +1137,58 @@ body.layers-hidden #layer-panel{
 <div id="map"></div>
 
 <div id="loading-overlay">
-  <div class="spinner"></div>
-  <div>Loading Risala coordinates…</div>
+  <div class="ld-parch" aria-hidden="true"></div>
+  <svg class="ld-world" viewBox="-500 -500 1000 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs>
+      <radialGradient id="ld-fade" cx="50%" cy="50%" r="50%">
+        <stop offset="55%" stop-color="#fff" stop-opacity="1"/>
+        <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+      </radialGradient>
+      <mask id="ld-fadeMask"><rect x="-500" y="-500" width="1000" height="1000" fill="url(#ld-fade)"/></mask>
+    </defs>
+    <g mask="url(#ld-fadeMask)">
+      <g id="ld-grat" class="ld-grat"></g>
+      <g class="ld-route">
+        <path d="M-420 180 C-300 60 -200 260 -80 120 S160 -40 260 70 400 -120 430 -200"/>
+        <path d="M-380 -220 C-260 -300 -160 -120 -20 -190 S200 -310 330 -230"/>
+      </g>
+      <g id="ld-pins"></g>
+    </g>
+  </svg>
+  <svg class="ld-astro" viewBox="-300 -300 600 600" aria-hidden="true">
+    <g class="ld-ring ld-ring-outer" id="ld-ringOuter"><circle r="288"/><circle r="262"/></g>
+    <g class="ld-ring ld-ring-mid" id="ld-ringMid"><circle r="226"/></g>
+    <g class="ld-rose" id="ld-rose"></g>
+  </svg>
+  <div class="ld-corner ld-tl" id="ld-cTL"></div>
+  <div class="ld-corner ld-tr" id="ld-cTR"></div>
+  <div class="ld-corner ld-bl" id="ld-cBL"></div>
+  <div class="ld-corner ld-br" id="ld-cBR"></div>
+  <div class="ld-stage">
+    <div class="ld-seal" aria-hidden="true">
+      <svg viewBox="-50 -50 100 100">
+        <circle r="46" class="ld-ring-s"/>
+        <circle r="41" class="ld-ring-s thin"/>
+        <g class="ld-ticks">
+          <path d="M0-46V-38M46 0H38M0 46V38M-46 0H-38"/>
+          <path d="M32.5-32.5L27-27M32.5 32.5L27 27M-32.5 32.5L-27 27M-32.5-32.5L-27-27" class="minor"/>
+        </g>
+        <g class="ld-card">
+          <path d="M0-36L6 0L0 36L-6 0Z" class="ld-v"/>
+          <path d="M-36 0L0-6L36 0L0 6Z" class="ld-h"/>
+        </g>
+        <g class="ld-needle">
+          <path d="M0-30L5 0L-5 0Z" class="ld-n"/>
+          <path d="M0 30L5 0L-5 0Z" class="ld-s"/>
+        </g>
+        <circle r="4" class="ld-c"/>
+        <circle r="1.4" class="ld-dot"/>
+      </svg>
+    </div>
+    <div class="ld-text" role="status">Loading Risala coordinates<span class="ld-dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span></div>
+    <div class="ld-bar"><div class="ld-fill" id="ld-fill"></div></div>
+    <div class="ld-pct" id="ld-pct">0%</div>
+  </div>
 </div>
 
 <div id="top-toolbar">
@@ -1146,11 +1288,12 @@ body.layers-hidden #layer-panel{
   </div>
 </div>
 
+<script src="loadingscene.js?v=1"></script>
 <script src="graticules.js?v=2"></script>
 <script src="boundaries.js?v=2"></script>
 <script src="geoplaces-now.js?v=2"></script>
 <script src="measure.js"></script>
 <script src="الخطوط.js?v=3"></script>
-<script src="app.js?v=12"></script>
+<script src="app.js?v=14"></script>
 </body>
 </html>

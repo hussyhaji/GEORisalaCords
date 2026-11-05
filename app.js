@@ -321,10 +321,41 @@ async function fetchSupabaseRows(){
   });
 }
 
+// Loading bar: fills toward 90% while the data downloads, hits 100% when it's in, then the
+// overlay fades out. First visit of the day holds the scene for a short minimum so the
+// animation is seen; returning visitors only wait for the actual data.
+const LOADING_SEEN_KEY = 'geo.loadingSeen';
+const LOADING_FIRST_MIN_MS = 1500;
+const LOADING_RAMP_MS = 1800;
+let loadingSeenRecently = false;
+try {
+  loadingSeenRecently = Date.now() - Number(localStorage.getItem(LOADING_SEEN_KEY) || 0) < 24 * 3600 * 1000;
+  localStorage.setItem(LOADING_SEEN_KEY, String(Date.now()));
+} catch (e) {}
+const LOADING_MIN_MS = loadingSeenRecently ? 0 : LOADING_FIRST_MIN_MS;
+const loadingStart = Date.now();
+const ldFill = document.getElementById('ld-fill');
+const ldPct = document.getElementById('ld-pct');
+let ldValue = 0;
+function setLoadingProgress(v){
+  ldValue = Math.max(ldValue, Math.min(100, v));
+  if (ldFill) ldFill.style.width = ldValue + '%';
+  if (ldPct) ldPct.textContent = Math.round(ldValue) + '%';
+}
+const ldTimer = setInterval(() => {
+  setLoadingProgress(Math.min(90, (Date.now() - loadingStart) / LOADING_RAMP_MS * 90));
+}, 100);
+
 fetchSupabaseRows().then(rows => {
   buildLayersFromRows(rows);
-  document.getElementById('loading-overlay').classList.add('hidden');
+  const wait = Math.max(0, LOADING_MIN_MS - (Date.now() - loadingStart));
+  setTimeout(() => {
+    clearInterval(ldTimer);
+    setLoadingProgress(100);
+    setTimeout(() => document.getElementById('loading-overlay').classList.add('hidden'), loadingSeenRecently ? 120 : 300);
+  }, wait);
 }).catch(err => {
+  clearInterval(ldTimer);
   console.error('Supabase load error:', err);
   document.getElementById('loading-overlay').innerHTML =
     `<div style="max-width:320px;text-align:center;">
