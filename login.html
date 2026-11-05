@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>تسجيل الدخول — خزانة الخرائط القديمة</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Reem+Kufi:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="login.css?v=1">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+
+<div class="parchment" aria-hidden="true"></div>
+
+<svg class="world" id="world" viewBox="-500 -500 1000 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+ <defs>
+  <radialGradient id="fade" cx="50%" cy="50%" r="50%">
+   <stop offset="55%" stop-color="#fff" stop-opacity="1"/>
+   <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+  </radialGradient>
+  <mask id="fadeMask"><rect x="-500" y="-500" width="1000" height="1000" fill="url(#fade)"/></mask>
+ </defs>
+ <g mask="url(#fadeMask)">
+  <g id="graticule" class="graticule"></g>
+  <g class="route">
+   <path id="route1" d="M-420 180 C-300 60 -200 260 -80 120 S160 -40 260 70 400 -120 430 -200"/>
+   <path id="route2" d="M-380 -220 C-260 -300 -160 -120 -20 -190 S200 -310 330 -230"/>
+  </g>
+  <g id="pins"></g>
+ </g>
+</svg>
+
+<svg class="astrolabe" viewBox="-300 -300 600 600" aria-hidden="true">
+ <g class="ring ring-outer" id="ringOuter">
+  <circle r="288"/><circle r="262"/>
+ </g>
+ <g class="ring ring-mid" id="ringMid"><circle r="226"/></g>
+ <g class="rose" id="rose"></g>
+</svg>
+
+<div class="corner tl" id="cTL"></div>
+<div class="corner tr" id="cTR"></div>
+<div class="corner bl" id="cBL"></div>
+<div class="corner br" id="cBR"></div>
+
+<div class="cross" id="cross" hidden><span id="crossTxt"></span></div>
+
+<main class="stage">
+ <section class="card" aria-labelledby="title">
+  <svg class="frame" viewBox="0 0 400 560" preserveAspectRatio="none" aria-hidden="true">
+   <rect x="6" y="6" width="388" height="548" rx="4"/>
+   <rect x="16" y="16" width="368" height="528" rx="2" class="thin" pathLength="1"/>
+  </svg>
+  <span class="orn o1"></span><span class="orn o2"></span><span class="orn o3"></span><span class="orn o4"></span>
+
+  <div class="seal" aria-hidden="true">
+   <svg viewBox="-50 -50 100 100">
+    <circle r="46" class="cp-ring"/>
+    <circle r="41" class="cp-ring thin"/>
+    <g class="cp-ticks">
+     <path d="M0-46V-38M46 0H38M0 46V38M-46 0H-38"/>
+     <path d="M32.5-32.5L27-27M32.5 32.5L27 27M-32.5 32.5L-27 27M-32.5-32.5L-27-27" class="minor"/>
+    </g>
+    <g class="cp-card">
+     <path d="M0-36L6 0L0 36L-6 0Z" class="cp-v"/>
+     <path d="M-36 0L0-6L36 0L0 6Z" class="cp-h"/>
+    </g>
+    <g class="cp-needle">
+     <path d="M0-30L5 0L-5 0Z" class="cp-n"/>
+     <path d="M0 30L5 0L-5 0Z" class="cp-s"/>
+    </g>
+    <circle r="4" class="seal-c"/>
+    <circle r="1.4" class="seal-dot"/>
+   </svg>
+  </div>
+
+  <h1 id="title">مرحبًا بالباحث</h1>
+
+  <div class="divider" aria-hidden="true"><i></i><b></b><i></i></div>
+
+  <div class="gwrap">
+    <div id="gbtn" class="gbtn"></div>
+    <div id="gwait" class="gwait">جارٍ تجهيز بوابة جوجل…</div>
+  </div>
+
+  <p class="rule">الدخول مخصَّص لحسابات<br><bdi class="dom">@jameasaifiyah.edu</bdi></p>
+
+  <p class="msg" id="msg" role="alert" aria-live="assertive" hidden></p>
+
+  <p class="coord" aria-hidden="true"><span id="lat">٢١°٢٥′ ش</span> · <span id="lon">٣٩°٥٠′ ق</span></p>
+ </section>
+</main>
+
+<script src="login.js?v=1"></script>
+</body>
+</html>
